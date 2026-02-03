@@ -1,0 +1,9 @@
+{
+  "fetch_dmarket": true,
+  "fetch_csfloat": true,
+  "start_year": 2026,
+  "end_year": 2026,
+  "start_month": 1,
+  "end_month": 1,
+  "create_xlsx": true
+}
