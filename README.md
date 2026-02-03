@@ -21,12 +21,15 @@ It will try to automatically match "Buy" and "Sell" transactions in order to cre
 2. Copy and fill keys in secrets.json:
    - Windows: `copy config\secrets.example.json config\secrets.json`
    - Unix/Mac: `cp config/secrets.example.json config/secrets.json`
+
    Open config/secrets.json and fill in your API keys (DMarket Private Key & CSFloat API Key)
+
 3. Configure Settings:
    Open `config/settings.json` to toggle marketplaces and set your sales target date range.
 4. Install dependencies: `go mod tidy`
 5. Run the app:
    - `go run cmd/profitChecker/main.go`
+
    or build an executable:
    - `go build -o cs2-profit-checker.exe ./cmd/profitChecker`
 
