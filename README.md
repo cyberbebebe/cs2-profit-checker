@@ -44,4 +44,6 @@ It will try to automatically match "Buy" and "Sell" transactions in order to cre
 
    2. Buy History: The app is hardcoded in `main.go` to search for "Buys" starting from 2020. However, I do **not** recommend setting your "Sales" range that far back (even before 2025) due to the metadata issues mentioned in Note 2 and the strict requests and history limits on cookie-related marketplaces.
 
+   3. This app completely ignores transactions if the corresponding opposite transaction was not found (i.e., it does not save them to files). Keep this in mind. I think I will do something about it later.
+
 Created for CS2 trading community and enthusiasts by a CS2 trader.
