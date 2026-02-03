@@ -54,4 +54,4 @@ It will try to automatically match "Buy" and "Sell" transactions in order to cre
 
    3. This app completely ignores transactions if the corresponding opposite transaction was not found (i.e., it does not save them to files). Keep this in mind. I think I will do something about it later.
 
-##### Created for CS2 trading community and enthusiasts by a CS2 trader.
+#### Created for CS2 trading community and enthusiasts by a CS2 trader.
