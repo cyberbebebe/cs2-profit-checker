@@ -1,4 +1,4 @@
-# CS2 Profit Checker - Cross-Marketplace Transaction Aggregator
+# Automated Profit Calculator for CS2 Traders
 
 ## Supported marketplaces: **DMarket, CSFloat, BuffMarket, CSMoney & Youpin**
 
