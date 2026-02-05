@@ -1,6 +1,6 @@
-# CS2-Profit-Checker
+# CS2 Profit Checker - Cross-Marketplace Transaction Aggregator
 
-## Supported marketplaces: **DMarket, CSFloat, BuffMarket, CSMoneyMarket & Youpin898**
+## Supported marketplaces: **DMarket, CSFloat, BuffMarket, CSMoney & Youpin**
 
 _(Updating and extension form is planned)_
 
