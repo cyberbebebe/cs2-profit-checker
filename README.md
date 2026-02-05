@@ -27,7 +27,8 @@ Excelize - High-performance Excel report generation.
 ## Setup
 
 ### Quick start (No installation required)
-1. Clone the repo: `git clone https://github.com/cyberbebebe/cs2-profit-checker.git`, 
+
+1. Clone the repo: `git clone https://github.com/cyberbebebe/cs2-profit-checker.git`,
 
 `cd cs2-profit-checker`
 
@@ -49,16 +50,22 @@ Excelize - High-performance Excel report generation.
    Or run via terminal: .\tradeReporter.exe
 
 ### Build from source code (Advanced)
+
 If you want to modify the code or compile it yourself
 
 1. Install Go: Ensure you have Go 1.21+ installed.
 
-2. Configure secrets and config (described in quick start, steps **2** and **3**)
+2. Clone the repo: `git clone https://github.com/cyberbebebe/cs2-profit-checker.git`,
 
-3. Run the app:
+`cd cs2-profit-checker`
+
+3. Configure secrets and config (described in # Quick start, steps **2** and **3**)
+
+4. Install Dependencies: `go mod tidy`
+
+5. Run or Build:
    - `go run cmd/profitChecker/main.go`
 
-   or build an executable:
    - `go build -o tradeReporter.exe ./cmd/profitChecker`
 
 ## Important notes:
