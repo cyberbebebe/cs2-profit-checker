@@ -1,6 +1,10 @@
 {
-  "fetch_dmarket": true,
-  "fetch_csfloat": true,
+  "fetch_dmarket": false,
+  "dmarket_cs_only": true,
+  "fetch_csfloat": false,
+  "fetch_buffmarket": false,
+  "fetch_csmoney": false,
+  "fetch_youpin": false,
   "start_year": 2026,
   "end_year": 2026,
   "start_month": 1,

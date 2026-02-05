@@ -7,7 +7,7 @@ config/secrets.json
 
 # Reports (Generated files in root)
 *.xlsx
-report.json
+*.json
 
 # IDE folders
 .vscode/

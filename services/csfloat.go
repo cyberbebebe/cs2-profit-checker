@@ -3,7 +3,6 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
 	"time"
 
@@ -11,37 +10,11 @@ import (
 	"github.com/cyberbebebe/cs2-profit-checker/utils"
 )
 
-type csfloatResponse struct {
-	Trades []trade `json:"trades"`
-	Count int `json:"count"`
-}
-
-type trade struct {
-	ID         string      `json:"id"`
-	VerifiedAt string      `json:"verified_at"`
-	Contract   contract    `json:"contract"`
-}
-
-type contract struct{
-	Item item `json:"item"`
-	Price int `json:"price"` // Cents!
-}	
-
-type item struct{
-	AssetID  string `json:"asset_id"`
-	ItemName string `json:"market_hash_name"`
-	FloatValue float64 `json:"float_value"`
-	Phase string `json:"phase"`
-	Pattern int `json:"paint_seed"`
-	
-}
-
 type CSFloatService struct {
 	ApiKey string
 	Client *http.Client
 }
 
-// SERVICE FUNCTIONS
 func NewCSFloatService(apiKey string) *CSFloatService{
 	return &CSFloatService{
 		ApiKey: apiKey,
@@ -129,10 +102,16 @@ func convertCsfloatTx(raw trade, role string) types.Transaction{
 	// Calculate 98% of the value if our sale
 	if role == "seller" {
         afterFeeCents := float64(raw.Contract.Price) * 0.98
-        finalPrice = math.Round(afterFeeCents) / 100.0
+        finalPrice = utils.FloatRound((afterFeeCents) / 100.0)
 
     } else {
         finalPrice = float64(raw.Contract.Price) / 100.0
+	}
+
+	pattern := raw.Contract.Item.Pattern
+
+	if raw.Contract.Item.CharmPattern != 0{
+		pattern = raw.Contract.Item.CharmPattern
 	}
 
 	tx := types.Transaction{
@@ -145,7 +124,7 @@ func convertCsfloatTx(raw trade, role string) types.Transaction{
 		Currency:  "USD",
 		Date:      t,
 		FloatVal:  raw.Contract.Item.FloatValue,
-		Pattern:   raw.Contract.Item.Pattern,
+		Pattern:   pattern,
 		Phase:     raw.Contract.Item.Phase,
 	}
 

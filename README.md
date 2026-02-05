@@ -1,57 +1,68 @@
 # CS2-Profit-Checker
 
-### Currently supported marketplaces: **DMarket** & **CSFloat**
+### Currently supported marketplaces: **DMarket, CSFloat, BuffMarket, CSMoneyMarket & Youpin898**
 
-_(Support for BuffMarket, YouPin898, and CSMoneyMarket is planned)_
+_(Updating and extension form is planned)_
 
-This Go app will aggregates your transactions history from multiple CS2 skins marketplaces.
-It will try to automatically match "Buy" and "Sell" transactions in order to create reports in Excel (.xlsx) and JSON formats. Set needed month(s) and year(s) in settings.json (read important notes).
+This Go app aggregates transactions history from multiple marketplaces, matches buy/sell pairs using advanced item signatures, and generates precise net profit reports in Excel and JSON formats. (At least, tries to)
 
 ## Features
 
 - **Cross-Marketplace matching:** Matches purchases and sales accross cs2 skins marketplaces using generated item signatures (based on Float, Pattern, and Name).
-- **Smart calculations:** Automatically accounts fees for all marketplaces, calculates **true net profit** transactions dates.
-- **Date Filtering:** Define custom date ranges by month (and year) for precise, period-based profit tracking.
-- **Excel Reports**: Generates a formatted `.xlsx` file with color-coded profit/loss columns.
-- **Verified Trades Only:** The app automatically filters out pending and failed trades, processing only verified transactions. **Note:** For deals made after the "Trade Revert" update, "verified" indicates post-pending success, with transaction date aligned to the fund payout time.
+- **Smart calculations:** Automatically accounts for fees (all) and currencies (currently only CNY) for all marketplaces, calculates **true** net profit.
+- **Date Filtering:** Define custom date ranges by month and year for precise, period-based profit tracking. These ranges are automatically reflected in the report filenames
+- **Excel Reports**: Generates a formatted .xlsx file with color-coded profit/loss columns, sortable by date or profit margin.
+- **Verified Trades Only:** The app only processing only verified* transactions. 
+
+*Verified indicates post-pending successful deals. For newer transactions, the date aligns with the fund payout time (after trade-protection period). For older transactions, it aligns with the marketplace success timestamp.
+
+## Built With
+Go (1.24.5), 1.16+ is required;
+Surf - Browser impersonation and JA3 fingerprinting to bypass Cloudflare.
+Excelize - High-performance Excel report generation.
 
 ## Setup
 
 1. Clone the repo: `git clone https://github.com/cyberbebebe/cs2-profit-checker.git`, `cd cs2-profit-checker`
+
 2. Copy and fill keys in secrets.json:
    - Windows: `copy config\secrets.example.json config\secrets.json`
    - Unix/Mac: `cp config/secrets.example.json config/secrets.json`
 
-   Open config/secrets.json and fill in your API keys (DMarket Private Key & CSFloat API Key)
+   Open config/secrets.json and fill:
+   1. API keys (DMarket Private key & CSFloat API Key)
+   2. For scraped marketplaces (Buff, Youpin, CSMoney), follow the instructions inside the JSON file to get your session cookies/headers from your browser.
 
 3. Configure Settings:
-   Open `config/settings.json` to toggle marketplaces and set your sales target date range.
+   Open `config/settings.json` to toggle marketplaces, set your sales fetching target month(s) (and years if needed) range.
+
 4. Install dependencies: `go mod tidy`
+
 5. Run the app:
    - `go run cmd/profitChecker/main.go`
 
    or build an executable:
-   - `go build -o cs2-profit-checker.exe ./cmd/profitChecker`
+   - `go build -o tradeReporter.exe ./cmd/profitChecker`
 
 ## Important notes:
 
-1. Data Interpretation: This code does interpreter empty `floats`, `phases`, or `patterns` as `0.0`, `""`, or `0` respectively.
-
-   _(I could use pointers but it requires a lot of checks in every service file. Since i rarely buy and sell stickers, containers etc (items without float) i reduced some code complexity)_
-
-2. DMarket's Limitation: I do **not** recommend to fetch DMarket's history before September 2025. Transactions made before that date lack critical metadata (float, phase, pattern and dmarket's local item ID), which makes it impossible to generate a unique "signature" (based on metadata) for matching without using any complex workarounds.
-
-   _(DMarket's transactions lost metadata lack **can** be "recovered" by using strange workaround but it requires a major additions, changes to existing code and A LOT of authorized requests)_
-
-3. File locking: If `report.xlsx` is open in Excel, the app cannot overwrite it.
-
-   _Its also possible to write dates in file names according to fetched sales range, maybe i will add this later._
-
-4. Settings details: The start and end settings are inclusive of the entire month.
+1. Settings details: The start and end settings are inclusive of the entire month.
    1. Example: If you set `start_month: 1` and `end_month: 2` (with year 2026), the app will fetch data for both January AND February, up to the very last second of February (23:59:59 UTC).
 
-   2. Buy History: The app is hardcoded in `main.go` to search for "Buys" starting from 2020. However, I do **not** recommend setting your "Sales" range that far back (even before 2025) due to the metadata issues mentioned in Note 2 and the strict requests and history limits on cookie-related marketplaces.
+   2. Buy History: The app is hardcoded in `main.go` to request for "Buys" starting from 1/1/2024 on every marketplace. However, I do **not** recommend setting your "Sales" range that far back (even before 2025) due to the metadata issues mentioned in Note 2, the strict requests and history limits on cookie-related marketplaces. (For example, BuffMarket deletes transactions older than 1 year, CSMoneyMarket have strict rate limits which will not let you scan full history guaranted and fast)
 
-   3. This app completely ignores transactions if the corresponding opposite transaction was not found (i.e., it does not save them to files). Keep this in mind. I think I will do something about it later.
+   3. I recommend to set `dmarket_cs_only` to `true` in settings for dmarket fetching. Even if you buy and sale items from other items the matching logic is kinda braindead right now. Maybe i will fix it later.
+
+   4. This app saves sale transactions without found matching buy transactions, however profit (both $ and %) in this case in json file and Excel table will be 0 and 0%.
+
+2. Data Interpretation: This code does interpreter empty `floats`, `phases`, or `patterns` as `0.0`, `""`, or `0` respectively. (Charms patterns from non-applied Charm transactions on CSFloat are stored using same "Pattern" field. I'm doing this so that Charms transactions are not mismatched (I hope).)
+
+   _(I could use pointers but it requires a lot of checks in every service file. Since i rarely buy and sell stickers, containers etc (items without float) i reduced some code complexity, maybe you will suggest how i need to handle this)._
+
+3. DMarket's Limitation: I do **not** recommend to fetch DMarket's history before September 2025. Transactions made before that date lack critical metadata (float, phase, pattern and dmarket's local item ID), which makes it impossible to generate a unique "signature" (based on metadata) for matching without using any complex workarounds.
+
+   _(DMarket's transactions lost metadata lack **can** be recovered (almost) fully by using strange workaround but it requires a major additions, changes to existing code and A LOT of authorized requests or only partially but this will use only few requests and some addition matching logic)_
+
+4. File locking: If `report*.xlsx` is open in Excel, the app cannot overwrite it.
 
 #### Created for CS2 trading community and enthusiasts by a CS2 trader.

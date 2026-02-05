@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -33,7 +34,7 @@ func main(){
 		cfg.EndMonth, 
 	)
 
-    buyStart := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+    buyStart := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	buyEnd := time.Now().AddDate(0, 0, 1)
 
 	fmt.Printf("Looking for SALES between: %s and %s\n", salesStart.Format("2006-01-02"), salesEnd.Format("2006-01-02"))
@@ -42,12 +43,28 @@ func main(){
 	var fetchers []services.Fetcher
 	
 	if cfg.FetchDMarket {
-        fetchers = append(fetchers, services.NewDMarketService(secrets.DMarketKey))
+		csOnly := false
+		if cfg.DmarketCSOnly{
+			csOnly = true
+		}
+        fetchers = append(fetchers, services.NewDMarketService(secrets.DMarketKey, csOnly))
     }
 
 	if cfg.FetchCSFloat {
         fetchers = append(fetchers, services.NewCSFloatService(secrets.CSFloatKey))
     }
+
+	if cfg.FetchBuffMarket {
+        fetchers = append(fetchers, services.NewBuffMarketService(secrets.BuffHeaders, secrets.BuffCookies))
+    }
+	
+	if cfg.FetchCSMoney {
+        fetchers = append(fetchers, services.NewCSMoneyService(secrets.CSMoneyCookies))
+    }
+
+	if cfg.FetchYoupin {
+		fetchers = append(fetchers, services.NewYoupinService(secrets.YoupinHeaders, secrets.YoupinSteamID))
+	}
 
 	var allSales []types.Transaction
 	var allBuys []types.Transaction
@@ -101,18 +118,28 @@ func main(){
 	fmt.Println("Starting matching process...")
 	completedPairs := processor.MatchTransactions(allSales, allBuys)
 	fmt.Printf("Successfully matched %d pairs.\n", len(completedPairs))
-	file, _ := os.Create("report.json")
+	
+	reportName := fmt.Sprintf("trade_report_%s_to_%s", 
+		salesStart.Format("02-01-2006"), 
+		salesEnd.Format("02-01-2006"),
+	)
+
+	file, _ := os.Create(reportName + ".json") 
 	defer file.Close()
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	encoder.Encode(completedPairs)
 
-	fmt.Println("Report saved to report.json")
+	fmt.Printf("Report saved to %s.json\n", reportName)
 	
 	if cfg.CreateXLSX {
-        fmt.Println("Generating Excel report (report.xlsx)...")
-        err := utils.CreateExcelReport(completedPairs, "report.xlsx")
+		sort.Slice(completedPairs, func(i, j int) bool {
+    		return completedPairs[i].SellTime.After(completedPairs[j].SellTime)
+		})
+        fmt.Printf("Generating Excel report (%s.xlsx)...\n", reportName)
+		
+        err := utils.CreateExcelReport(completedPairs, reportName + ".xlsx")
         if err != nil {
             log.Printf("Failed to create Excel: %v", err)
         } else {

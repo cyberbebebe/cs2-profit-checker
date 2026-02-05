@@ -45,13 +45,19 @@ type CompletedPair struct {
     Profit     float64   `json:"profit"`
     ProfitPerc float64   `json:"profit_percent"`
     Signature  string    `json:"signature"`
+
+    // Metadata
+    FloatVal float64
+    Phase    string
+    Pattern  int
 }
 
 type Settings struct {
     CreateXLSX    bool `json:"create_xlsx"`
     FetchDMarket  bool `json:"fetch_dmarket"`
+    DmarketCSOnly bool `json:"dmarket_cs_only"`
     FetchCSFloat  bool `json:"fetch_csfloat"`
-    FetchBuff     bool `json:"fetch_buffmarket"`
+    FetchBuffMarket     bool `json:"fetch_buffmarket"`
     FetchCSMoney  bool `json:"fetch_csmoney"`
     FetchYoupin   bool `json:"fetch_youpin"`
     
@@ -65,9 +71,9 @@ type Secrets struct {
     DMarketKey    string            `json:"dmarket_key"`
     CSFloatKey    string            `json:"csfloat_key"`
     
-    YoupinHeaders    map[string]string `json:"youpin_headers"`
     BuffCookies      map[string]string `json:"buffmarket_cookies"`
     BuffHeaders      map[string]string `json:"buffmarket_headers"`
     CSMoneyCookies   map[string]string `json:"csmoney_cookie"`
-    CSMoneyHeaders   map[string]string `json:"csmoney_headers"`
+    YoupinHeaders    map[string]string `json:"youpin_headers"`
+    YoupinSteamID    string `json:"youpin_steamid"`
 }
