@@ -49,7 +49,7 @@ Excelize - High-performance Excel report generation.
 1. Settings details: The start and end settings are inclusive of the entire month.
    1. Example: If you set `start_month: 1` and `end_month: 2` (with year 2026), the app will fetch data for both January AND February, up to the very last second of February (23:59:59 UTC).
 
-   2. Buy History: The app is hardcoded in `main.go` to request for "Buys" starting from 1/1/2024 on every marketplace. However, I do **not** recommend setting your "Sales" range that far back (even before 2025) due to the metadata issues mentioned in Note 2, the strict requests and history limits on cookie-related marketplaces. (For example, BuffMarket deletes transactions older than 1 year, CSMoneyMarket have strict rate limits which will not let you scan full history guaranted and fast)
+   2. Buy History: The app is hardcoded in `main.go` to request for "Buys" starting from 1/1/2024 on every marketplace. However, I do **not** recommend setting your "Sales" range that far back (even before 2025) due to the metadata issues mentioned in Note 2, the strict requests and history limits on cookie-related marketplaces. (For example, BuffMarket deletes transactions older than 1 year, CSMoneyMarket have strict rate limits which will not let you scan full history guaranted and fast). **Note**: You must be logged in from the same IP address on every marketplace from which you want to fetch data. For example, do not use a VPN to log in to them.
 
    3. I recommend to set `dmarket_cs_only` to `true` in settings for dmarket fetching. Even if you buy and sale items from other items the matching logic is kinda braindead right now. Maybe i will fix it later.
 
@@ -65,4 +65,5 @@ Excelize - High-performance Excel report generation.
 
 4. File locking: If `report*.xlsx` is open in Excel, the app cannot overwrite it.
 
-#### Created for CS2 trading community and enthusiasts by a CS2 trader.
+#### Created for CS2 trading community and enthusiasts by a CS2 trader 
+##### as an interesting challenge (and as useful tool for tax report xd)
