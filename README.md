@@ -1,7 +1,6 @@
 # CS2-Profit-Checker
 
-## Supported marketplaces:
-### **DMarket, CSFloat, BuffMarket, CSMoneyMarket & Youpin898**
+## Supported marketplaces: **DMarket, CSFloat, BuffMarket, CSMoneyMarket & Youpin898**
 
 _(Updating and extension form is planned)_
 
