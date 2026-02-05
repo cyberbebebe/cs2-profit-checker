@@ -70,6 +70,6 @@ Excelize - High-performance Excel report generation.
 
 5. You must be logged in from the same IP address on every marketplace from which you want to fetch data. For example, do not use a VPN to log in to them.
 
-#### Created for CS2 trading community and enthusiasts by a CS2 trader
+### Created for CS2 trading community and enthusiasts by a CS2 trader
 
-##### as an interesting challenge (and as useful tool for tax report xd)
+#### as an interesting challenge (and as useful tool for tax report xd)
