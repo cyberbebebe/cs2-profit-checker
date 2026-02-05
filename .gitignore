@@ -1,5 +1,4 @@
 # Binaries
-*.exe
 *.dll
 
 # Secrets (User specific)

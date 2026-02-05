@@ -26,9 +26,12 @@ Excelize - High-performance Excel report generation.
 
 ## Setup
 
-1. Clone the repo: `git clone https://github.com/cyberbebebe/cs2-profit-checker.git`, `cd cs2-profit-checker`
+### Quick start (No installation required)
+1. Clone the repo: `git clone https://github.com/cyberbebebe/cs2-profit-checker.git`, 
 
-2. Copy and fill keys in secrets.json:
+`cd cs2-profit-checker`
+
+2. Configure Secrets: You need to create your private secrets file from the template:
    - Windows: `copy config\secrets.example.json config\secrets.json`
    - Unix/Mac: `cp config/secrets.example.json config/secrets.json`
 
@@ -36,12 +39,23 @@ Excelize - High-performance Excel report generation.
    1. API keys (DMarket Private key & CSFloat API Key)
    2. For scraped marketplaces (Buff, Youpin, CSMoney), follow the instructions inside the JSON file to get your session cookies/headers from your browser.
 
-3. Configure Settings:
-   Open `config/settings.json` to toggle marketplaces, set your sales fetching target month(s) (and years if needed) range.
+3. Configure marketplaces and date range to fetch:
+   Open `config/settings.json` to toggle which marketplaces to fetch and define the date range for your report.
 
-4. Install dependencies: `go mod tidy`
+4. Run the Tool:
 
-5. Run the app:
+   Double-click: `tradeReporter.exe`
+
+   Or run via terminal: .\tradeReporter.exe
+
+### Build from source code (Advanced)
+If you want to modify the code or compile it yourself
+
+1. Install Go: Ensure you have Go 1.21+ installed.
+
+2. Configure secrets and config (described in quick start, steps **2** and **3**)
+
+3. Run the app:
    - `go run cmd/profitChecker/main.go`
 
    or build an executable:
