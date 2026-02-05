@@ -40,14 +40,13 @@ Excelize - High-performance Excel report generation.
    1. API keys (DMarket Private key & CSFloat API Key)
    2. For scraped marketplaces (Buff, Youpin, CSMoney), follow the instructions inside the JSON file to get your session cookies/headers from your browser.
 
-3. Configure marketplaces and date range to fetch:
-   Open `config/settings.json` to toggle which marketplaces to fetch and define the date range for your report.
+3. Open `config/settings.json` to toggle which marketplaces to fetch and define the date range for your report.
 
 4. Run the Tool:
 
    Double-click: `tradeReporter.exe`
 
-   Or run via terminal: .\tradeReporter.exe
+   Or run via terminal: `.\tradeReporter.exe`
 
 ### Build from source code (Advanced)
 
@@ -55,11 +54,7 @@ If you want to modify the code or compile it yourself
 
 1. Install Go: Ensure you have Go 1.21+ installed.
 
-2. Clone the repo: `git clone https://github.com/cyberbebebe/cs2-profit-checker.git`,
-
-`cd cs2-profit-checker`
-
-3. Configure secrets and config (described in # Quick start, steps **2** and **3**)
+2. Clone, configure secrets and config (described in # Quick start, steps **1** to **3**)
 
 4. Install Dependencies: `go mod tidy`
 
