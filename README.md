@@ -18,7 +18,7 @@ This Go app aggregates transactions history from multiple marketplaces, matches 
 
 ## Built With
 
-Go (1.24.5), 1.16+ is required;
+Go 1.24.5
 
 Surf - Browser impersonation and JA3 fingerprinting to bypass Cloudflare.
 
@@ -28,25 +28,31 @@ Excelize - High-performance Excel report generation.
 
 ### Quick start (No installation required)
 
-1. Clone the repo: `git clone https://github.com/cyberbebebe/cs2-profit-checker.git`,
-
-`cd cs2-profit-checker`
-
-2. Configure Secrets: You need to create your private secrets file from the template:
-   - Windows: `copy config\secrets.example.json config\secrets.json`
-   - Unix/Mac: `cp config/secrets.example.json config/secrets.json`
+1. Download: Go to the Releases Page and download the latest .zip file (e.g., CS2.Profit.Checker.v1.0.zip)
 
    Open config/secrets.json and fill:
    1. API keys (DMarket Private key & CSFloat API Key)
    2. For scraped marketplaces (Buff, Youpin, CSMoney), follow the instructions inside the JSON file to get your session cookies/headers from your browser.
 
-3. Open `config/settings.json` to toggle which marketplaces to fetch and define the date range for your report.
+2. Extract: Unzip the downloaded archive to a folder on your computer
 
-4. Run the Tool:
+3. Configure Secrets:
+   - Open the config folder
+   - Rename `secrets.example.json` to `secrets.json`
+   - Open secrets.json with a text editor (like Notepad) and fill in:
+   1. API Keys: For DMarket and CSFloat.
 
-   Double-click: `tradeReporter.exe`
+   2. Cookies: For scraped marketplaces (Buff, Youpin, CSMoney).
+      Follow the instructions inside the file to get these from your browser
 
-   Or run via terminal: `.\tradeReporter.exe`
+4. Configure Settings:
+   - Open `config/settings.json`
+   - Set `true` for the marketplaces you want to fetch
+   - Define the date range (months and years) for your report
+
+5. Run the Tool: Double-click tradeReporter.exe.
+
+   (The tool will create your Excel and JSON reports in the same folder).
 
 ### Build from source code (Advanced)
 
@@ -56,9 +62,9 @@ If you want to modify the code or compile it yourself
 
 2. Clone, configure secrets and config (described in # Quick start, steps **1** to **3**)
 
-4. Install Dependencies: `go mod tidy`
+3. Install Dependencies: `go mod tidy`
 
-5. Run or Build:
+4. Run or Build:
    - `go run cmd/profitChecker/main.go`
 
    - `go build -o tradeReporter.exe ./cmd/profitChecker`
@@ -68,15 +74,17 @@ If you want to modify the code or compile it yourself
 1. Settings details: The start and end settings are inclusive of the entire month.
    1. Example: If you set `start_month: 1` and `end_month: 2` (with year 2026), the app will fetch data for both January AND February, up to the very last second of February (23:59:59 UTC).
 
-   2. Buy History: The app is hardcoded in `main.go` to request for "Buys" starting from 1/1/2024 on every marketplace. However, I do **not** recommend setting your "Sales" range that far back (even before 2025) due to the metadata issues mentioned in Note 2, the strict requests and history limits on cookie-related marketplaces. (For example, BuffMarket deletes transactions older than 1 year, CSMoneyMarket have strict rate limits for history fetching).
+   2. Buy History: The app is hardcoded in `main.go` to request for "Buys" starting from 1/1/2023 on every marketplace. However, I do **not** recommend setting your "Sales" range that far back (even before 2025) due to the metadata issues mentioned, the strict requests and history limits on cookie-scraped marketplaces. (BuffMarket deletes transactions older than 1 year, CSMoneyMarket have strict rate limits for history fetching, DMarket have no metadata in old transactions).
 
-   3. I recommend to set `dmarket_cs_only` to `true` in settings for dmarket fetching. Even if you buy and sale items from other items the matching logic is kinda braindead right now. Maybe i will fix it later.
+   3. I recommend to set `dmarket_cs_only` to `true` in settings for DMarket fetching. Even if you buy and sale items from other items the matching logic is kinda braindead right now. Maybe i will fix it later.
 
-   4. This app saves sale transactions without found matching buy transactions, however profit (both $ and %) in this case in json file and Excel table will be 0 and 0%.
+   4. This app fetches sales transactions for a specified date range and then tries to find corresponding buy transactions. If there are no matching buy transactions, the profit (in dollars and as a percentage) in the JSON file and Excel table will be set to 0 and 0%, respectively, profit cell will calculate profit automatically after filling buy price cell for this item.
 
-2. Data Interpretation: This code does interpreter empty `floats`, `phases`, or `patterns` as `0.0`, `""`, or `0` respectively. (Charms patterns from non-applied Charm transactions on CSFloat are stored using same "Pattern" field. I'm doing this so that Charms transactions are not mismatched (I hope).)
+2. Data Interpretation: This code does interpreter empty `floats`, `phases`, or `patterns` as `0.0`, `""`, or `-1` respectively.
 
-   _(I could use pointers but it requires a lot of checks in every service file. Since i rarely buy and sell stickers, containers etc (items without float) i reduced some code complexity, maybe you will suggest how i need to handle this)._
+   Charms patterns from non-applied Charm transactions are stored using same "Pattern" field as weapons patterns. I'm doing it to trying minimize missmatching for Charms transactions (I hope).
+
+   _(Maybe you will suggest how i need to handle matching for commodity items such as containers, stickers, charms)._
 
 3. DMarket's Limitation: I do **not** recommend to fetch DMarket's history before September 2025. Transactions made before that date lack critical metadata (float, phase, pattern and dmarket's local item ID), which makes it impossible to generate a unique "signature" (based on metadata) for matching without using any complex workarounds.
 
@@ -84,7 +92,7 @@ If you want to modify the code or compile it yourself
 
 4. File locking: If `report*.xlsx` is open in Excel, the app cannot overwrite it.
 
-5. You must be logged in from the same IP address on every marketplace from which you want to fetch data. For example, do not use a VPN to log in to them.
+5. You need to have same IP as logged session on **scraped** marketplaces from which you want to fetch data.
 
 ### Created for CS2 trading community and enthusiasts by a CS2 trader
 

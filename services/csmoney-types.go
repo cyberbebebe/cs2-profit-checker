@@ -20,11 +20,11 @@ type csmoneyDetails struct {
 			Asset struct {
 				ID        string `json:"id"`
 				Float     string `json:"float"`
-				PaintSeed int    `json:"paintseed"`
+				PaintSeed *int   `json:"paintseed"`
 				Names     struct {
 					Full string `json:"full"`
 				} `json:"names"`
-				CharmPattern int `json:"keychainPattern"`
+				CharmPattern *int `json:"keychainPattern"`
 			} `json:"asset"`
 		} `json:"skins"`
 	} `json:"sellOrder"`
@@ -34,10 +34,11 @@ type csmoneyDetails struct {
 		Skins []struct {
 			ID    int64 `json:"id"`
 			Asset struct {
-				ID      int64   `json:"id"`
-				Float   float64 `json:"float"`
-				Pattern int     `json:"pattern"`
-				Names   struct {
+				ID           int64   `json:"id"`
+				Float        float64 `json:"float"`
+				Pattern      *int    `json:"pattern"`
+				CharmPattern *int    `json:"keychainPattern"`
+				Names        struct {
 					Full string `json:"full"`
 				} `json:"names"`
 			} `json:"asset"`

@@ -35,7 +35,7 @@ type buffAssetInfo struct {
 }
 
 type buffInfo struct {
-	Paintseed  int `json:"paintseed"`
+	Paintseed  *int `json:"paintseed"`
 	Metaphysic struct {
 		Data struct {
 			Phase string `json:"name"`
@@ -43,6 +43,6 @@ type buffInfo struct {
 	} `json:"metaphysic"`
 	Keychains []struct {
 		CharmName    string `json:"name"`
-		CharmPattern int    `json:"pattern"`
+		CharmPattern *int    `json:"pattern"`
 	} `json:"keychains"`
 }

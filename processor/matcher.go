@@ -40,7 +40,7 @@ func MatchTransactions(sales []types.Transaction, buys []types.Transaction) []ty
 		matchIndex := -1
 
 		// Try to find a valid buy
-		if len(potentialBuys) > 0 {
+		if (sale.FloatVal > 0 || sale.Pattern != -1) && len(potentialBuys) > 0 {
 			for i, buy := range potentialBuys {
 				if buy.Date.Before(sale.Date) {
 					matchIndex = i

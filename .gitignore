@@ -1,5 +1,6 @@
 # Binaries
 *.dll
+*.exe
 
 # Secrets (User specific)
 config/secrets.json

@@ -130,14 +130,19 @@ func convertBuffMarketTx(raw buffItemObject, itemName string, action string) typ
 	floatVal, _ := strconv.ParseFloat(raw.AssetInfo.Paintwear, 64)
 	date := time.Unix(raw.UpdatedAt, 0)
 
-	paintseed := raw.AssetInfo.Info.Paintseed
+	finalPattern := -1
+
+	if raw.AssetInfo.Info.Paintseed != nil{
+		finalPattern = *raw.AssetInfo.Info.Paintseed
+	}
+	
 	// Charm check
 	if len(raw.AssetInfo.Info.Keychains) > 0 {
 		charmObject := raw.AssetInfo.Info.Keychains[0]
 		
 		// Contains for situations where "Charm" part is not in CharmName
 		if strings.Contains(itemName, charmObject.CharmName) {
-			paintseed = charmObject.CharmPattern
+			finalPattern = *charmObject.CharmPattern
     	}
 	}
 
@@ -151,11 +156,11 @@ func convertBuffMarketTx(raw buffItemObject, itemName string, action string) typ
 		Currency:  "USD",
 		Date:      date,
 		FloatVal:  floatVal,
-		Pattern:   paintseed,
+		Pattern:   finalPattern,
 		Phase:     raw.AssetInfo.Info.Metaphysic.Data.Phase,
 	}
 
-	tx.Signature = utils.GenerateSignature(tx.ItemName, tx.FloatVal, tx.Pattern)
+	tx.Signature = utils.GenerateSignature(tx.ItemName, tx.FloatVal, finalPattern)
 	
 	return tx
 }

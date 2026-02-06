@@ -18,7 +18,7 @@ func CreateExcelReport(pairs []types.CompletedPair, filename string) error {
 	headers := []string{
 		"Item Name", "Float", "Phase", "Pattern",
 		"Buy Source", "Buy Price", "Buy Date",
-		"Sell Source", "Sell Price", "Sell Date",
+		"Sell Source", "Sell Income", "Sell Date",
 		"Profit ($)", "Profit (%)",
 	}
 

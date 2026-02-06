@@ -21,6 +21,6 @@ type item struct {
 	ItemName     string  `json:"market_hash_name"`
 	FloatValue   float64 `json:"float_value"`
 	Phase        string  `json:"phase"`
-	Pattern      int     `json:"paint_seed"`
-	CharmPattern int     `json:"keychain_pattern"`
+	Pattern      *int     `json:"paint_seed"`
+	CharmPattern *int     `json:"keychain_pattern"`
 }

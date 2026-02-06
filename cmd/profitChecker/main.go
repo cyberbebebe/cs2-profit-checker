@@ -34,7 +34,7 @@ func main(){
 		cfg.EndMonth, 
 	)
 
-    buyStart := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+    buyStart := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 	buyEnd := time.Now().AddDate(0, 0, 1)
 
 	fmt.Printf("Looking for SALES between: %s and %s\n", salesStart.Format("2006-01-02"), salesEnd.Format("2006-01-02"))

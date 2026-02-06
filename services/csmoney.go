@@ -138,9 +138,12 @@ func (s *CSMoneyService) convertCSMoneyTx(raw csmoneyItem) []types.Transaction {
 	if raw.Type == "sell" {
 		data := raw.Details.SellOrder.Skins
 		
-		pattern := data.Asset.PaintSeed
-		if data.Asset.CharmPattern != 0 {
-			pattern = data.Asset.CharmPattern
+		finalPattern := -1
+		if data.Asset.PaintSeed != nil{
+			finalPattern = *data.Asset.PaintSeed
+		}
+		if data.Asset.CharmPattern != nil {
+			finalPattern = *data.Asset.CharmPattern
 		}
 
 		fVal, _ := strconv.ParseFloat(data.Asset.Float, 64)
@@ -155,17 +158,25 @@ func (s *CSMoneyService) convertCSMoneyTx(raw csmoneyItem) []types.Transaction {
 			Currency:  "USD",
 			Date:      date,
 			FloatVal:  fVal,
-			Pattern:   pattern,
+			Pattern:   finalPattern,
 			Phase:     phase,
 		}
 		// Signature
-		tx.Signature = utils.GenerateSignature(tx.ItemName, tx.FloatVal, tx.Pattern)
+		tx.Signature = utils.GenerateSignature(tx.ItemName, tx.FloatVal, finalPattern)
 		transactions = append(transactions, tx)
 
 	// BUYS
 	} else if raw.Type == "buy" {
 		for _, skin := range raw.Details.Offer.Skins {
 			cleanName, phase := utils.ExtractPhase(skin.Asset.Names.Full)
+
+			finalPattern := -1
+			if skin.Asset.Pattern != nil{
+				finalPattern = *skin.Asset.Pattern
+			}
+			if skin.Asset.CharmPattern != nil {
+				finalPattern = *skin.Asset.CharmPattern
+		}
 
 			tx := types.Transaction{
 				Source:    "CSMoney",
@@ -177,11 +188,11 @@ func (s *CSMoneyService) convertCSMoneyTx(raw csmoneyItem) []types.Transaction {
 				Currency:  "USD",
 				Date:      date,
 				FloatVal:  skin.Asset.Float,
-				Pattern:   skin.Asset.Pattern,
+				Pattern:   finalPattern,
 				Phase:     phase,
 			}
 			// Signature
-			tx.Signature = utils.GenerateSignature(tx.ItemName, tx.FloatVal, tx.Pattern)
+			tx.Signature = utils.GenerateSignature(tx.ItemName, tx.FloatVal, finalPattern)
 			transactions = append(transactions, tx)
 		}
 	}

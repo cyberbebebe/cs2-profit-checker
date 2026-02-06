@@ -142,7 +142,11 @@ func (s *YoupinService) fetchHistory(mode string, startTime, endTime time.Time) 
 				// Metadata Parsing
 				floatVal, _ := strconv.ParseFloat(item.Abrade, 64)
 				phase := item.DopplerTitle
-
+				finalPattern := -1
+				if item.PaintSeed != nil{
+					finalPattern = *item.PaintSeed
+				}
+				
 				txType := types.TxSell
 				if mode == "Buy" {
 					txType = types.TxBuy
@@ -161,9 +165,9 @@ func (s *YoupinService) fetchHistory(mode string, startTime, endTime time.Time) 
 					Currency:  "USD",
 					Date:      txDate,
 					FloatVal:  floatVal,
-					Pattern:   item.PaintSeed,
+					Pattern:   finalPattern,
 					Phase:     phase,
-					Signature: utils.GenerateSignature(name, floatVal, item.PaintSeed),
+					Signature: utils.GenerateSignature(name, floatVal, finalPattern),
 				}
 
 				results = append(results, tx)

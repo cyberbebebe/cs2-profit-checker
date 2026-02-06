@@ -41,7 +41,7 @@ type youpinProduct struct {
 	// "abrade" is the Float Value (String)
 	Abrade string `json:"abrade"` 
 
-	PaintSeed    int    `json:"paintSeed"`
+	PaintSeed    *int    `json:"paintSeed"`
 	DopplerTitle string `json:"dopplerTitle"`
 }
 

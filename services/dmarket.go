@@ -132,6 +132,11 @@ func convertDMarketWebTx(raw dmarketWebTransaction) types.Transaction{
         txType = types.TxSell
     }
 
+	finalPattern := -1
+
+	if raw.Details.Extra.PaintSeed != nil {
+		finalPattern = *raw.Details.Extra.PaintSeed
+	}
 	tx := types.Transaction{
         Source:    "DMarket",
         Type:      txType,
@@ -142,11 +147,11 @@ func convertDMarketWebTx(raw dmarketWebTransaction) types.Transaction{
         Currency:  "USD",
         Date:      finalDate,
         FloatVal:  raw.Details.Extra.FloatValue,
-        Pattern:   raw.Details.Extra.PaintSeed,
+        Pattern:   finalPattern,
         Phase:     raw.Details.Extra.PhaseTitle,
     }
 	
-	tx.Signature = utils.GenerateSignature(tx.ItemName, tx.FloatVal, tx.Pattern)
+	tx.Signature = utils.GenerateSignature(tx.ItemName, tx.FloatVal, finalPattern)
 
 	return tx
 }

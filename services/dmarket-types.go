@@ -19,7 +19,7 @@ type dmarketWebTransaction struct {
 		Extra          struct {
 			FloatPartValue string  `json:"floatPartValue"`
 			FloatValue     float64 `json:"floatValue"`
-			PaintSeed      int     `json:"paintSeed"` // to compare nil instead of 0
+			PaintSeed      *int     `json:"paintSeed"` // to compare nil instead of 0
 			PhaseTitle     string  `json:"phaseTitle"`
 		} `json:"extra"`
 	} `json:"details"`

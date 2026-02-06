@@ -108,10 +108,13 @@ func convertCsfloatTx(raw trade, role string) types.Transaction{
         finalPrice = float64(raw.Contract.Price) / 100.0
 	}
 
-	pattern := raw.Contract.Item.Pattern
+	finalPattern := -1
+	if raw.Contract.Item.Pattern != nil{
+		finalPattern = *raw.Contract.Item.Pattern
+	}
 
-	if raw.Contract.Item.CharmPattern != 0{
-		pattern = raw.Contract.Item.CharmPattern
+	if raw.Contract.Item.CharmPattern != nil{
+		finalPattern = *raw.Contract.Item.CharmPattern
 	}
 
 	tx := types.Transaction{
@@ -124,11 +127,11 @@ func convertCsfloatTx(raw trade, role string) types.Transaction{
 		Currency:  "USD",
 		Date:      t,
 		FloatVal:  raw.Contract.Item.FloatValue,
-		Pattern:   pattern,
+		Pattern:   finalPattern,
 		Phase:     raw.Contract.Item.Phase,
 	}
 
-	tx.Signature = utils.GenerateSignature(tx.ItemName, tx.FloatVal, tx.Pattern)
+	tx.Signature = utils.GenerateSignature(tx.ItemName, tx.FloatVal, finalPattern)
 	
 	return tx
 
