@@ -50,9 +50,9 @@ Excelize - High-performance Excel report generation.
    - Set `true` for the marketplaces you want to fetch
    - Define the date range (months and years) for your report
 
-5. Run the Tool: Double-click tradeReporter.exe.
+5. Run the Tool: Double-click `tradeReporter.exe`.
 
-   (The tool will create your Excel and JSON reports in the same folder).
+   _The app will create your Excel and JSON reports in the same folder_
 
 ### Build from source code (Advanced)
 
