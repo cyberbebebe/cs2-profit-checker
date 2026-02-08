@@ -96,4 +96,6 @@ If you want to modify the code or compile it yourself
 
 ### Created for CS2 trading community and enthusiasts by a CS2 trader
 
-#### as an interesting challenge (and as useful tool for tax report xd)
+#### as an interesting challenge and as useful tool.
+
+### Does **NOT** represent actual tax report
