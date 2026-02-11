@@ -17,7 +17,7 @@ export class DMarketFetcher extends BaseFetcher {
   async getHistory(activity) {
     let items = [];
     let offset = 0;
-    const limit = 5000;
+    const limit = 10000;
     const actParam = activity === "sell" ? "sell" : "purchase,target_closed";
 
     while (true) {
