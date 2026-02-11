@@ -78,7 +78,13 @@ export function initReports(state) {
           sellDate,
         );
 
-        const profitUSD = sellPriceUSD - buyPriceUSD;
+        let profitUSD = 0;
+        if (buyPriceUSD > 0) {
+          profitUSD = sellPriceUSD - buyPriceUSD;
+        } else {
+          profitUSD = 0;
+        }
+
         let profitPerc = 0;
         if (buyPriceUSD > 0) profitPerc = profitUSD / buyPriceUSD;
 
