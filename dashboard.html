@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>CS2 Trade Manager</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="lib/xlsx.mini.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header class="main-header">
+        <h1>CS2 Trading Profit Checker & Tax Reports</h1>
+        <a
+          href="https://github.com/cyberbebebe/"
+          target="_blank"
+          class="github-link"
+        >
+          by cyberbebebe <span>↗</span>
+        </a>
+      </header>
+
+      <section class="panel" id="panel-sessions">
+        <div class="panel-header">
+          <h2>Marketplaces Sessions</h2>
+          <div class="header-actions">
+            <button id="btn-check-sessions" class="secondary-btn">
+              ↻ Check
+            </button>
+          </div>
+        </div>
+        <div class="sessions-grid">
+          <div class="session-card" id="card-dmarket">
+            <div class="card-icon">🧩</div>
+            <div class="card-info">
+              <div class="card-name">DMarket</div>
+              <div class="card-status status-unknown">Unknown</div>
+            </div>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggle-dmarket" checked />
+              <label for="toggle-dmarket" class="slider"></label>
+            </div>
+          </div>
+
+          <div class="session-card" id="card-csfloat">
+            <div class="card-icon">📊</div>
+            <div class="card-info">
+              <div class="card-name">CSFloat</div>
+              <div class="card-status status-unknown">Unknown</div>
+            </div>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggle-csfloat" checked />
+              <label for="toggle-csfloat" class="slider"></label>
+            </div>
+          </div>
+
+          <div class="session-card" id="card-buffmarket">
+            <div class="card-icon">📦</div>
+            <div class="card-info">
+              <div class="card-name">BuffMarket</div>
+              <div class="card-status status-unknown">Unknown</div>
+            </div>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggle-buffmarket" checked />
+              <label for="toggle-buffmarket" class="slider"></label>
+            </div>
+          </div>
+
+          <div class="session-card" id="card-csmoney">
+            <div class="card-icon">🎀</div>
+            <div class="card-info">
+              <div class="card-name">CSMoney</div>
+              <div class="card-status status-unknown">Unknown</div>
+            </div>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggle-csmoney" checked />
+              <label for="toggle-csmoney" class="slider"></label>
+            </div>
+          </div>
+
+          <div class="session-card" id="card-buff163">
+            <div class="card-icon">♠️</div>
+            <div class="card-info">
+              <div class="card-name">Buff163</div>
+              <div class="card-status status-unknown">Unknown</div>
+            </div>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggle-buff163" checked />
+              <label for="toggle-buff163" class="slider"></label>
+            </div>
+          </div>
+
+          <div class="session-card" id="card-youpin">
+            <div class="card-icon">🏷️</div>
+            <div class="card-info">
+              <div class="card-name">Youpin*</div>
+              <div class="card-status status-unknown">Unknown</div>
+            </div>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggle-youpin" checked />
+              <label for="toggle-youpin" class="slider"></label>
+            </div>
+          </div>
+
+          <div class="session-card" id="card-skinport">
+            <div class="card-icon">🌊</div>
+            <div class="card-info">
+              <div class="card-name">Skinport</div>
+              <div class="card-status status-unknown">Unknown</div>
+            </div>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggle-skinport" checked />
+              <label for="toggle-skinport" class="slider"></label>
+            </div>
+          </div>
+
+          <div class="session-card" id="card-steam">
+            <div class="card-icon">⭐</div>
+            <div class="card-info">
+              <div class="card-name">Steam</div>
+              <div class="card-status status-unknown">Unknown</div>
+            </div>
+            <div class="toggle-switch">
+              <input type="checkbox" id="toggle-steam" checked />
+              <label for="toggle-steam" class="slider"></label>
+            </div>
+          </div>
+        </div>
+        <div class="session-note">
+          *Note: Youpin's session fetching will open a tab and close it
+          automatically to retrieve session tokens.
+        </div>
+      </section>
+
+      <section class="panel" id="panel-data">
+        <div class="panel-header">
+          <h2>Data Collection</h2>
+        </div>
+
+        <div class="fetch-controls">
+          <button id="btn-fetch-all" class="primary-btn">
+            <span>⬇ Fetch Data</span>
+          </button>
+
+          <div class="progress-container">
+            <div class="progress-bar-fill" id="progress-fill"></div>
+            <div class="progress-text" id="progress-text">Ready to fetch</div>
+          </div>
+        </div>
+
+        <div class="mini-logs" id="logs-area"></div>
+      </section>
+
+      <section class="panel disabled" id="panel-reports">
+        <div class="panel-header">
+          <h2>Reports Generation</h2>
+        </div>
+
+        <div class="settings-grid">
+          <div class="setting-item">
+            <label>Report Month</label>
+            <input type="month" id="report-month" value="2026-02" />
+          </div>
+          <div class="setting-item">
+            <label>Currency (Tax Report)</label>
+            <select id="currency-select">
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="PLN">PLN (zł)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="report-buttons-container">
+          <div class="report-group">
+            <h3>Profit Report (Standard)</h3>
+            <div class="btn-group">
+              <button id="btn-profit-json">JSON</button>
+              <button id="btn-profit-xlsx">XLSX</button>
+            </div>
+          </div>
+          <div class="report-group">
+            <h3>Tax Report (Accounting)</h3>
+            <div class="btn-group">
+              <button id="btn-tax-json">JSON</button>
+              <button id="btn-tax-xlsx">XLSX</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script type="module" src="js/dashboard.js"></script>
+  </body>
+</html>

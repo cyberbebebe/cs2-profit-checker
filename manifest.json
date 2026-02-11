@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "CS2 Profit & Tax Manager",
+  "version": "1.3",
+  "description": "CS2 marketplaces transactions collector. Calculate profits and generate tax reports.",
+  "permissions": ["storage", "unlimitedStorage", "cookies", "scripting"],
+  "host_permissions": [
+    "*://*.dmarket.com/*",
+    "*://*.csfloat.com/*",
+    "*://*.buff.market/*",
+    "*://*.cs.money/*",
+    "*://*.youpin898.com/*",
+    "*://skinport.com/*",
+    "*://buff.163.com/*",
+    "*://steamcommunity.com/*",
+    "*://api.nbp.pl/*",
+    "*://api.frankfurter.dev/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Open Dashboard"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

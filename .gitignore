@@ -1,18 +1,15 @@
-# Binaries
-*.dll
-*.exe
 
-# Secrets (User specific)
-config/secrets.json
-
-# Reports (Generated files in root)
-*.xlsx
-*.json
-
-# IDE folders
-.vscode/
-.idea/
-
-# OS specific
 .DS_Store
 Thumbs.db
+desktop.ini
+
+*.log
+tmp/
+temp/
+
+.vscode/
+.idea/
+*.swp
+
+*.zip
+*.crx

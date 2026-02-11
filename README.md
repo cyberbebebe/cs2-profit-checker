@@ -1,101 +1,35 @@
 # Automated Profit Calculator for CS2 Traders
 
-## Supported marketplaces: **DMarket, CSFloat, BuffMarket, CSMoney & Youpin**
+### Supported Marketplaces:
 
-_(Updating and extension form is planned)_
+**DMarket, CSFloat, Skinport, Buff163, BuffMarket, CSMoney & Youpin**
 
-This Go app aggregates transactions history from multiple marketplaces, matches buy/sell pairs using advanced item signatures, and generates precise net profit reports in Excel and JSON formats. (At least, tries to)
+This browser extension aggregates transaction history from multiple marketplaces, matches buy/sell pairs using crafted item signatures and generates precise **Profit** and **Tax-like** reports in Excel and JSON formats.
 
-## Features
+## 🚀 Features
 
-- **Cross-Marketplace matching:** Matches purchases and sales accross cs2 skins marketplaces using generated item signatures (based on Float, Pattern, and Name).
-- **Smart calculations:** Automatically accounts for fees (all) and currencies (currently only CNY) for all marketplaces, calculates **true** net profit.
-- **Date Filtering:** Define custom date ranges by month and year for precise, period-based profit tracking. These ranges are automatically reflected in the report filenames
-- **Excel Reports**: Generates a formatted .xlsx file with color-coded profit/loss columns, sortable by date or profit margin.
-- **Verified Trades Only:** The app only processing only verified\* transactions.
+- **Cross-Marketplace Matching:** Matches purchases and sales across different CS2 skin marketplaces using intelligent item signatures (based on Float, Pattern, and Name).
+- **Smart Calculations:** Automatically accounts for specific fees of each marketplace to calculate **true** net profit.
+- **Excel Reports:** Generates a formatted `.xlsx` file with profit/loss column and auto-filters for sorting by Profit ($) or Profit (%).
+- **Verified Profit Report:** The extension processes only verified\* transactions for Profit Reports. Tax Reports uses createdAt timestamps.
 
-\*Verified indicates post-pending successful deals. For newer transactions, the date aligns with the fund payout time (after trade-protection period). For older transactions, it aligns with the marketplace success timestamp.
+_\*Verified transactions indicate successful deals. For recent transactions, the date aligns with the payout time (after the trade-protection period). For older transactions, it aligns with the marketplace success timestamp._
 
-## Built With
+## 📦 Setup / Installation
 
-Go 1.24.5
+1. Download the `cs2-profit-checker-vX.X.zip` from the **[Releases page](https://github.com/cyberbebebe/cs2-profit-checker/releases)**.
+2. Unzip the archive to a folder on your computer.
+3. Open your browser (Chrome, Brave, Edge, Opera, etc.):
+   - Go to `chrome://extensions/` (or usually "Menu -> Extensions -> Manage Extensions").
+   - Enable **Developer mode** (toggle in the top right corner).
+   - Click **Load unpacked**.
+   - Select the folder where you unzipped the extension.
+4. Pin the extension and click the icon to open the dashboard!
 
-Surf - Browser impersonation and JA3 fingerprinting to bypass Cloudflare.
+---
 
-Excelize - High-performance Excel report generation.
+### Created for the CS2 trading community by a CS2 trader
 
-## Setup
+_Developed as an interesting challenge and a useful tool for enthusiasts._
 
-### Quick start (No installation required)
-
-1. Download: Go to the Releases Page and download the latest .zip file (e.g., CS2.Profit.Checker.v1.0.zip)
-
-   Open config/secrets.json and fill:
-   1. API keys (DMarket Private key & CSFloat API Key)
-   2. For scraped marketplaces (Buff, Youpin, CSMoney), follow the instructions inside the JSON file to get your session cookies/headers from your browser.
-
-2. Extract: Unzip the downloaded archive to a folder on your computer
-
-3. Configure Secrets:
-   - Open the config folder
-   - Rename `secrets.example.json` to `secrets.json`
-   - Open secrets.json with a text editor (like Notepad) and fill in:
-   1. API Keys: For DMarket and CSFloat.
-
-   2. Cookies: For scraped marketplaces (Buff, Youpin, CSMoney).
-      Follow the instructions inside the file to get these from your browser
-
-4. Configure Settings:
-   - Open `config/settings.json`
-   - Set `true` for the marketplaces you want to fetch
-   - Define the date range (months and years) for your report
-
-5. Run the Tool: Double-click `tradeReporter.exe`.
-
-   _The app will create your Excel and JSON reports in the same folder_
-
-### Build from source code (Advanced)
-
-If you want to modify the code or compile it yourself
-
-1. Install Go: Ensure you have Go 1.21+ installed.
-
-2. Clone, configure secrets and config (described in # Quick start, steps **1** to **3**)
-
-3. Install Dependencies: `go mod tidy`
-
-4. Run or Build:
-   - `go run cmd/profitChecker/main.go`
-
-   - `go build -o tradeReporter.exe ./cmd/profitChecker`
-
-## Important notes:
-
-1. Settings details: The start and end settings are inclusive of the entire month.
-   1. Example: If you set `start_month: 1` and `end_month: 2` (with year 2026), the app will fetch data for both January AND February, up to the very last second of February (23:59:59 UTC).
-
-   2. Buy History: The app is hardcoded in `main.go` to request for "Buys" starting from 1/1/2023 on every marketplace. However, I do **not** recommend setting your "Sales" range that far back (even before 2025) due to the metadata issues mentioned, the strict requests and history limits on cookie-scraped marketplaces. (BuffMarket deletes transactions older than 1 year, CSMoneyMarket have strict rate limits for history fetching, DMarket have no metadata in old transactions).
-
-   3. I recommend to set `dmarket_cs_only` to `true` in settings for DMarket fetching. Even if you buy and sale items from other items the matching logic is kinda braindead right now. Maybe i will fix it later.
-
-   4. This app fetches sales transactions for a specified date range and then tries to find corresponding buy transactions. If there are no matching buy transactions, the profit (in dollars and as a percentage) in the JSON file and Excel table will be set to 0 and 0%, respectively, profit cell will calculate profit automatically after filling buy price cell for this item.
-
-2. Data Interpretation: This code does interpreter empty `floats`, `phases`, or `patterns` as `0.0`, `""`, or `-1` respectively.
-
-   Charms patterns from non-applied Charm transactions are stored using same "Pattern" field as weapons patterns. I'm doing it to trying minimize missmatching for Charms transactions (I hope).
-
-   _(Maybe you will suggest how i need to handle matching for commodity items such as containers, stickers, charms)._
-
-3. DMarket's Limitation: I do **not** recommend to fetch DMarket's history before September 2025. Transactions made before that date lack critical metadata (float, phase, pattern and dmarket's local item ID), which makes it impossible to generate a unique "signature" (based on metadata) for matching without using any complex workarounds.
-
-   _(DMarket's transactions lost metadata lack **can** be recovered (almost) fully by using strange workaround but it requires a major additions, changes to existing code and A LOT of authorized requests or only partially but this will use only few requests and some addition matching logic)_
-
-4. File locking: If `report*.xlsx` is open in Excel, the app cannot overwrite it.
-
-5. You need to have same IP as logged session on **scraped** marketplaces from which you want to fetch data.
-
-### Created for CS2 trading community and enthusiasts by a CS2 trader
-
-#### as an interesting challenge and as useful tool.
-
-### Does **NOT** represent actual tax report
+> **Note:** This tool provides a "Tax-like" report structure to assist with accounting, but it does not replace professional tax advice.
