@@ -10,8 +10,8 @@ This browser extension aggregates transaction history from multiple marketplaces
 
 - **Cross-Marketplace Matching:** Matches purchases and sales across different CS2 skin marketplaces using intelligent item signatures (based on Float, Pattern, and Name).
 - **Smart Calculations:** Automatically accounts for specific fees of each marketplace to calculate **true** net profit.
-- **Balance Calculator:** Calculates the total wallet balance from all marketplaces.
-- **Excel Reports:** Generates a formatted `.xlsx` file with "Profit" column and auto-filters for sorting by Profit ($), Profit (%), Sell Income or Date.
+- **Balance Calculator:** Calculates the total wallet balance from all marketplaces turned on by pressing "Balance" button.
+- **Excel Reports:** Generates a formatted `.xlsx` file with "Profit" column, carefully calculated Total Profit and auto-filters for sorting by Profit ($), Profit (%), Sell Income or Date.
 - **Verified Profit Report:** The extension processes only verified\* transactions for Profit Reports. Tax Reports uses createdAt timestamps.
 
 _\*Verified transactions indicate successful deals. For recent transactions, the date aligns with the payout time (after the trade-protection period). For older transactions, it aligns with the marketplace success timestamp._
