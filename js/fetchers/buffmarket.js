@@ -19,6 +19,21 @@ export class BuffMarketFetcher extends BaseFetcher {
       return false;
     }
   }
+  async getBalance() {
+    try {
+      const url = "https://api.buff.market/api/asset/get_brief_asset/";
+      const data = await this.fetchWithAuth(url);
+
+      if (!data) return { amount: 0, currency: "USD" };
+
+      const usd = parseFloat(data.data.total_amount || 0);
+
+      return { amount: usd, currency: "USD" };
+    } catch (e) {
+      console.error("[BuffMarket] Balance error:", e);
+      return { amount: 0, currency: "USD" };
+    }
+  }
 
   async getSales() {
     return this.getHistory("sell");
@@ -121,7 +136,7 @@ export class BuffMarketFetcher extends BaseFetcher {
 
       page++;
       // Go used 2 seconds sleep, JS needs await
-      await this.sleep(1000);
+      await this.sleep(500);
     }
 
     return allTxs;

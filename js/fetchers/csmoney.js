@@ -37,6 +37,28 @@ export class CSMoneyFetcher extends BaseFetcher {
     }
   }
 
+  async getBalance() {
+    try {
+      const resp = await fetch("https://cs.money/market/sell/", {
+        method: "GET",
+      });
+      const text = await resp.text();
+
+      // "marketBalance"
+      const balanceMatch = text.match(/"marketBalance":\s*([\d.]+)/);
+      const balance = balanceMatch ? parseFloat(balanceMatch[1]) : 0;
+
+      // p2pLimit
+      const p2pMatch = text.match(/"p2pLimit":\s*"?([\d.]+)"?/);
+      const p2p = p2pMatch ? parseFloat(p2pMatch[1]) : 0;
+
+      return { amount: balance + p2p, currency: "USD" };
+    } catch (e) {
+      console.error("[CSMoney] Balance error:", e);
+      return { amount: 0, currency: "USD" };
+    }
+  }
+
   async getSales() {
     const sold = await this.fetchHistory("sold", "sell");
     const protectedSales = await this.fetchHistory("trade_protected", "sell");
@@ -80,7 +102,7 @@ export class CSMoneyFetcher extends BaseFetcher {
 
         const lastItem = data[data.length - 1];
         if (lastItem && lastItem.offset) {
-          offsetParam = `&offset=${lastItem.offset-1}`;
+          offsetParam = `&offset=${lastItem.offset - 1}`;
         } else {
           break;
         }

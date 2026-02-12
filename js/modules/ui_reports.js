@@ -53,36 +53,36 @@ export function initReports(state) {
       ]);
 
       const ws_data = filtered.map((m) => {
-        const convertToUSD = (price, sourceName, date) => {
-          let currency = "USD";
-          if (sourceName === "Youpin") currency = "CNY";
-          if (sourceName === "Skinport") currency = "EUR";
+        const convertToUSD = (price, currency, date) => {
+          if (!currency || currency === "USD") return price;
 
-          if (currency === "USD") return price;
+          let rateMap = null;
+          if (currency === "CNY") rateMap = cnyMap;
+          else if (currency === "EUR") rateMap = eurMap;
+          if (!rateMap) {
+            console.warn(`No rate map for currency: ${currency}`);
+            return 0;
+          }
 
-          let rate = 1.0;
-          if (currency === "CNY") rate = getRateFromMap(date, cnyMap);
-          if (currency === "EUR") rate = getRateFromMap(date, eurMap);
-
+          const rate = getRateFromMap(date, rateMap);
           if (rate === 0) return 0;
+
           return price * rate;
         };
 
         const buyDate = m.buy_verified_at || m.buy_created_at || new Date();
         const sellDate = m.sell_verified_at || m.sell_created_at;
 
-        const buyPriceUSD = convertToUSD(m.buy_price, m.buy_source, buyDate);
+        const buyPriceUSD = convertToUSD(m.buy_price, m.buy_currency, buyDate);
         const sellPriceUSD = convertToUSD(
           m.sell_price,
-          m.sell_source,
+          m.sell_currency,
           sellDate,
         );
 
         let profitUSD = 0;
         if (buyPriceUSD > 0) {
           profitUSD = sellPriceUSD - buyPriceUSD;
-        } else {
-          profitUSD = 0;
         }
 
         let profitPerc = 0;
@@ -129,7 +129,7 @@ export function initReports(state) {
       ws[totalValueRef] = {
         t: "n",
         v: totalProfitJS,
-        f: `SUM(K2:K${lastRow})`, // Формула
+        f: `SUM(K2:K${lastRow})`, // Formula
       };
 
       for (let i = 0; i < ws_data.length; i++) {
@@ -156,7 +156,7 @@ export function initReports(state) {
       let cols = fitColumns(ws_data);
       if (cols[5]) cols[5].wch = Math.max(5, cols[5].wch / 2);
       if (cols[8]) cols[8].wch = Math.max(5, cols[8].wch / 2);
-      if (cols[10]) cols[10].wch = Math.max(4, cols[10].wch / 3);
+      if (cols[10]) cols[10].wch = Math.max(4, cols[10].wch / 2);
       if (cols[11]) cols[11].wch = Math.max(4, cols[11].wch / 3);
 
       if (!cols[13]) cols[13] = { wch: 15 };
@@ -202,8 +202,11 @@ export function initReports(state) {
 
       log(`Fetching rates for ${yearStr}-${monthStr}...`);
 
-      const startStr = startDate.toISOString().split("T")[0];
-      const endStr = endDate.toISOString().split("T")[0];
+      // const startStr = startDate.toISOString().split("T")[0];
+      const today = new Date();
+      const effectiveEndDate = endDate > today ? today : endDate;
+      const endStr = effectiveEndDate.toISOString().split("T")[0];
+
       const bufferDate = new Date(startDate);
       bufferDate.setDate(bufferDate.getDate() - 7);
       const bufferStr = bufferDate.toISOString().split("T")[0];

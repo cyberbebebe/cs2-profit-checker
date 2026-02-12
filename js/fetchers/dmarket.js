@@ -14,6 +14,25 @@ export class DMarketFetcher extends BaseFetcher {
     }
   }
 
+  async getBalance() {
+    try {
+      const url = "https://api.dmarket.com/account/v1/balance";
+      const data = await this.fetchWithAuth(url);
+
+      if (!data) return { amount: 0, currency: "USD" };
+
+      // cents
+      const usd = parseFloat(data.usd || 0);
+      const locked = parseFloat(data.usdTradeProtected || 0);
+
+      const total = (usd + locked) / 100.0;
+      return { amount: total, currency: "USD" };
+    } catch (e) {
+      console.error("[DMarket] Balance error:", e);
+      return { amount: 0, currency: "USD" };
+    }
+  }
+
   async getHistory(activity) {
     let items = [];
     let offset = 0;

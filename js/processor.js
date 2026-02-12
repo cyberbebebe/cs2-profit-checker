@@ -104,24 +104,30 @@ export function matchTransactions(sales, buys) {
     results.push({
       item_name: sale.item_name,
       signature: sig,
+
       // Buy Info
       buy_source: match ? match.source : "N/A",
       buy_price: buyPrice,
       buy_created_at: match ? match.created_at : null,
       buy_verified_at: match ? match.verified_at : null,
       buy_tx_id: match ? match.tx_id : "",
+      buy_currency: match ? match.currency : "USD",
+
       // Sell Info
       sell_source: sale.source,
       sell_price: sale.price,
       sell_created_at: sale.created_at,
       sell_verified_at: sale.verified_at,
       sell_tx_id: sale.tx_id,
+      sell_currency: sale.currency,
+
       // Stats
       profit: parseFloat(profit.toFixed(2)),
       profit_percent:
         match && match.price > 0
           ? ((profit / match.price) * 100).toFixed(2)
           : 0,
+
       // Meta
       float_val: sale.float_val,
       pattern: sale.pattern,

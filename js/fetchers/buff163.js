@@ -21,6 +21,27 @@ export class Buff163Fetcher extends BaseFetcher {
     }
   }
 
+  async getBalance() {
+    try {
+      const url = "https://buff.163.com/api/asset/get_brief_asset/";
+      const data = await this.fetchWithAuth(url);
+
+      if (!data) return { amount: 0, currency: "USD" };
+      let total = 0;
+
+      const cny = parseFloat(data.data.cash_amount || 0);
+      const frozen = parseFloat(data.data.frozen_amount || 0);
+      const pending = parseFloat(data.data.pending_divide_amount || 0);
+
+      total = cny + frozen + pending;
+
+      return { amount: cny, currency: "CNY" };
+    } catch (e) {
+      console.error("[Buff163] Balance error:", e);
+      return { amount: 0, currency: "USD" };
+    }
+  }
+
   async getSales() {
     return this.getHistory("sell");
   }
@@ -117,7 +138,7 @@ export class Buff163Fetcher extends BaseFetcher {
       }
 
       page++;
-      await this.sleep(750);
+      await this.sleep(500);
     }
 
     return allTxs;

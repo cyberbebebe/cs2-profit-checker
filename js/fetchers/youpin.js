@@ -77,6 +77,32 @@ export class YoupinFetcher extends BaseFetcher {
     }
   }
 
+  async getBalance() {
+    try {
+      if (!this.headers) return { amount: 0, currency: "USD" };
+      const resp = await fetch(
+        "https://api.youpin898.com/api/user/Account/GetUserInfo",
+        {
+          method: "GET",
+          headers: this.headers,
+        },
+      );
+
+      const json = await resp.json();
+      if (!json || json.Code !== 0) {
+        console.warn("[Youpin] Balance check failed, Code:", json?.Code);
+        return { amount: 0, currency: "USD" };
+      }
+
+      const cny = parseFloat(json.Data.TotalMoney || 0);
+
+      return { amount: cny, currency: "CNY" };
+    } catch (e) {
+      console.error("[Youpin] Balance error:", e);
+      return { amount: 0, currency: "USD" };
+    }
+  }
+
   async getSales() {
     return this.fetchHistory("Sell");
   }
@@ -214,7 +240,7 @@ export class YoupinFetcher extends BaseFetcher {
 
         if (orderList.length < pageSize) break;
         page++;
-        await this.sleep(1500);
+        await this.sleep(1000);
       } catch (e) {
         console.error("[Youpin] Error:", e);
         break;

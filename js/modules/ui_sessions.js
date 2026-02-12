@@ -1,14 +1,18 @@
 export function initSessionCheck(state) {
   const btn = document.getElementById("btn-check-sessions");
+  const btnBalance = document.getElementById("btn-get-balance");
 
   btn.addEventListener("click", async () => {
     btn.disabled = true;
     btn.textContent = "...";
 
+    if (btnBalance) {
+      btnBalance.disabled = true;
+    }
+
     for (const f of state.fetchers) {
       let cardId = `card-${f.name.toLowerCase().replace(/\s+/g, "")}`;
       let toggleId = `toggle-${f.name.toLowerCase().replace(/\s+/g, "")}`;
-
       const card = document.getElementById(cardId);
       const checkbox = document.getElementById(toggleId);
 
@@ -33,5 +37,9 @@ export function initSessionCheck(state) {
 
     btn.disabled = false;
     btn.textContent = "↻ Check";
+
+    if (btnBalance) {
+      btnBalance.disabled = false;
+    }
   });
 }

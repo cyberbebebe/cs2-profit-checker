@@ -25,7 +25,7 @@ export function initFetch(state) {
     }
 
     // 2. Progress setup
-    const totalSteps = enabledFetchers.length * 2; // Sales + Buys для кожного
+    const totalSteps = enabledFetchers.length * 2; // Sales + Buys
     let completedSteps = 0;
 
     const updateProgress = (actionName) => {
@@ -79,5 +79,86 @@ export function initFetch(state) {
       if (btn.textContent === "Refreshed")
         btn.innerHTML = "<span>⬇ Fetch Data</span>";
     }, 3000);
+  });
+
+  // BALANCE CHECKER
+  const btnBalance = document.getElementById("btn-get-balance");
+  const balanceDisplay = document.getElementById("total-balance-display");
+
+  // Helper: currency rate
+  const getConversionRate = async (from, to) => {
+    if (from === to) return 1;
+    try {
+      const res = await fetch(
+        `https://api.frankfurter.app/latest?from=${from}&to=${to}`,
+      );
+      const data = await res.json();
+      return data.rates[to] || 0;
+    } catch (e) {
+      console.error(`Rate fetch error (${from}->${to}):`, e);
+      return 0;
+    }
+  };
+
+  btnBalance.addEventListener("click", async () => {
+    const oldText = btnBalance.textContent;
+    btnBalance.disabled = true;
+    btnBalance.textContent = "⏳...";
+    balanceDisplay.textContent = "";
+
+    try {
+      const enabledFetchers = state.fetchers.filter((f) => {
+        const toggleId = `toggle-${f.name.toLowerCase().replace(/\s+/g, "")}`;
+        const checkbox = document.getElementById(toggleId);
+        return checkbox && checkbox.checked;
+      });
+
+      if (enabledFetchers.length === 0) {
+        alert("Select marketplaces first!");
+        return;
+      }
+
+      const promises = enabledFetchers.map(async (f) => {
+        try {
+          const result = await f.getBalance();
+          return { ...result, source: f.name };
+        } catch (e) {
+          console.error(e);
+          return { amount: 0, currency: "USD", source: f.name };
+        }
+      });
+
+      const balances = await Promise.all(promises);
+
+      let totalSumUSD = 0;
+
+      const conversionPromises = balances.map(async (b) => {
+        if (b.amount <= 0) return 0;
+
+        if (b.currency === "USD") {
+          console.log(`[Balance] ${b.source}: $${b.amount.toFixed(2)}`);
+          return b.amount;
+        } else {
+          const rate = await getConversionRate(b.currency, "USD");
+          const converted = b.amount * rate;
+          console.log(
+            `[Balance] ${b.source}: ${b.amount} ${b.currency} -> $${converted.toFixed(2)} (Rate: ${rate})`,
+          );
+          return converted;
+        }
+      });
+
+      const convertedAmounts = await Promise.all(conversionPromises);
+      totalSumUSD = convertedAmounts.reduce((sum, val) => sum + val, 0);
+
+      // Result Output
+      balanceDisplay.textContent = `$ ${totalSumUSD.toFixed(2)}`;
+    } catch (e) {
+      console.error("Balance Check Error:", e);
+      balanceDisplay.textContent = "Error";
+    } finally {
+      btnBalance.disabled = false;
+      btnBalance.textContent = oldText;
+    }
   });
 }

@@ -30,4 +30,9 @@ export class SteamFetcher extends BaseFetcher {
       return false;
     }
   }
+
+  // Steam != Real
+  async getBalance() {
+    return { amount: 0, currency: "USD" };
+  }
 }

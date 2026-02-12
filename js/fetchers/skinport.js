@@ -16,7 +16,12 @@ export class SkinportFetcher extends BaseFetcher {
     }
   }
 
-  // --- PUBLIC API ---
+  // No balance увы
+  async getBalance() {
+    return { amount: 0, currency: "USD" };
+  }
+
+  // PUBLIC API
   async getSales() {
     const history = await this.loadHistoryIfNeeded();
     return history.filter((tx) => tx.type === "SELL");
@@ -27,7 +32,7 @@ export class SkinportFetcher extends BaseFetcher {
     return history.filter((tx) => tx.type === "BUY");
   }
 
-  // --- INTERNAL ---
+  // INTERNAL
   async loadHistoryIfNeeded() {
     if (this.cachedHistory) return this.cachedHistory;
 

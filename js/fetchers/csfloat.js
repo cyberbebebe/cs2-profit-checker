@@ -14,6 +14,23 @@ export class CSFloatFetcher extends BaseFetcher {
       return false;
     }
   }
+  async getBalance() {
+    try {
+      const url = "https://csfloat.com/api/v1/me";
+      const data = await this.fetchWithAuth(url);
+
+      if (!data) return { amount: 0, currency: "USD" };
+
+      const usd = parseFloat(data.user.balance || 0);
+      const locked = parseFloat(data.user.pending_balance || 0);
+
+      const total = (usd + locked) / 100.0;
+      return { amount: total, currency: "USD" };
+    } catch (e) {
+      console.error("[CSFloat] Balance error:", e);
+      return { amount: 0, currency: "USD" };
+    }
+  }
 
   async getHistory(role) {
     let items = [];

@@ -275,15 +275,24 @@ input:checked + .slider:before {
   color: #fff;
 }
 
-/* Progress Bar Container - Видалено зайві рамки */
+.secondary-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  filter: grayscale(100%);
+  background: #25252e;
+  border-color: #333;
+  color: #666;
+  pointer-events: none;
+}
+
 .progress-container {
   flex-grow: 1;
   background: #15151a;
   border-radius: 8px;
-  height: 42px; /* Висота під кнопку */
+  height: 42px;
   position: relative;
   overflow: hidden;
-  border: 1px solid #333; /* Рамка тільки навколо самого бару */
+  border: 1px solid #333;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -317,7 +326,6 @@ input:checked + .slider:before {
   color: #888;
   max-height: 80px;
   overflow-y: auto;
-  /* ВИДАЛЕНО border-top, про який ти питав */
   padding-top: 5px;
 }
 
@@ -380,7 +388,7 @@ select:focus {
 .btn-group {
   display: flex;
   gap: 15px;
-  margin-top: auto; /* Притискає кнопки до низу */
+  margin-top: auto;
 }
 
 .btn-group button {
