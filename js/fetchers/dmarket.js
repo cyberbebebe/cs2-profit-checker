@@ -36,7 +36,7 @@ export class DMarketFetcher extends BaseFetcher {
   async getHistory(activity) {
     let items = [];
     let offset = 0;
-    const limit = 10000;
+    const limit = 5000;
     const actParam = activity === "sell" ? "sell" : "purchase,target_closed";
 
     while (true) {
@@ -91,5 +91,83 @@ export class DMarketFetcher extends BaseFetcher {
   }
   async getBuys() {
     return this.getHistory("buy");
+  }
+
+  async getInventory() {
+    try {
+      const limit = 100;
+      const gameId = "a8db"; // CS2 (CS:GO)
+      const allItems = [];
+
+      const fetchAllPages = async (baseUrl) => {
+        let cursor = "";
+        let pageItems = [];
+
+        while (true) {
+          const url = `${baseUrl}&limit=${limit}&cursor=${cursor}`;
+
+          const data = await this.fetchWithAuth(url);
+
+          if (!data || !data.objects) break;
+
+          const mapped = data.objects.map((item) => {
+            const extra = item.extra || {};
+
+            // Float
+            let floatVal = 0;
+            if (extra.floatValue !== undefined) {
+              floatVal = parseFloat(extra.floatValue);
+            }
+
+            // Pattern
+            let pattern = -1;
+            if (extra.paintSeed !== undefined) {
+              pattern = parseInt(extra.paintSeed);
+            }
+
+            return {
+              source: "DMarket",
+              asset_id: item.itemId, // DMarket's ID
+              item_name: item.title,
+              type: item.gameType || item.type || "CS2 Item",
+              float_val: floatVal,
+              pattern: pattern,
+              is_tradable:
+                typeof item.tradable === "boolean" ? item.tradable : true,
+            };
+          });
+
+          pageItems.push(...mapped);
+
+          if (!data.cursor) break;
+          cursor = data.cursor;
+
+          // anti-429
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        return pageItems;
+      };
+
+      // 1. Items on Sale (Offers)
+      const offersUrl = `https://api.dmarket.com/exchange/v1/user/offers?side=user&orderBy=price&orderDir=desc&title=&gameId=${gameId}&currency=USD`;
+
+      // 2. Items in Inventory (Not listed)
+      const itemsUrl = `https://api.dmarket.com/exchange/v1/user/items?side=user&orderBy=items.price&orderDir=desc&title=&treeFilters=itemLocation%5B%5D=true&gameId=${gameId}&currency=USD`;
+
+      // Start
+      const [offers, items] = await Promise.all([
+        fetchAllPages(offersUrl),
+        fetchAllPages(itemsUrl),
+      ]);
+
+      console.log(
+        `[DMarket] Inventory loaded. Offers: ${offers.length}, Items: ${items.length}`,
+      );
+
+      return [...offers, ...items];
+    } catch (e) {
+      console.error("[DMarket] Inventory error:", e);
+      return [];
+    }
   }
 }

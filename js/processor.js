@@ -138,3 +138,72 @@ export function matchTransactions(sales, buys) {
 
   return results;
 }
+
+export function matchInventory(inventoryItems, allBuys) {
+  // 1. Indexing
+  const buyMap = {}; // Signature -> [Buys]
+  const buyAssetMap = {}; // AssetID -> [Buys] (for DMarket)
+
+  // (Signature)
+  const generateSignature = (name, floatVal, pattern) => {
+    if (!floatVal || floatVal === 0) return name;
+    // Round float
+    const shortFloat = parseFloat(floatVal).toFixed(10);
+    const pat = pattern !== undefined && pattern !== -1 ? `-${pattern}` : "";
+    return `${name}-${shortFloat}${pat}`;
+  };
+
+  allBuys.forEach((b) => {
+    const sig = generateSignature(b.item_name, b.float_val, b.pattern);
+    if (!buyMap[sig]) buyMap[sig] = [];
+    buyMap[sig].push(b);
+
+    if (b.asset_id) {
+      if (!buyAssetMap[b.asset_id]) buyAssetMap[b.asset_id] = [];
+      buyAssetMap[b.asset_id].push(b);
+    }
+  });
+
+  // Sort by newest
+  const sortByDate = (list) =>
+    list.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+  for (let k in buyMap) sortByDate(buyMap[k]);
+  for (let k in buyAssetMap) sortByDate(buyAssetMap[k]);
+
+  // 2. Матчимо інвентар
+  return inventoryItems.map((item) => {
+    let match = null;
+
+    // А: Asset ID matching (DMarket)
+    if (item.asset_id && buyAssetMap[item.asset_id]) {
+      match = buyAssetMap[item.asset_id][0]; // Беремо найсвіжішу
+    }
+
+    // B: Signatures (Float + Pattern)
+    if (!match) {
+      const sig = generateSignature(
+        item.item_name,
+        item.float_val,
+        item.pattern,
+      );
+      if (buyMap[sig]) {
+        match = buyMap[sig][0];
+      }
+    }
+
+    return {
+      item_name: item.item_name,
+      float_val: item.float_val,
+      pattern: item.pattern,
+      source: item.source,
+
+      // Buy info
+      buy_source: match ? match.source : "Unknown",
+      buy_date: match ? match.created_at : null,
+      buy_price: match ? match.price : 0,
+      buy_currency: match ? match.currency : "USD",
+
+      is_matched: !!match,
+    };
+  });
+}

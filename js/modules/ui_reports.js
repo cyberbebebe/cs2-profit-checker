@@ -1,4 +1,4 @@
-import { matchTransactions } from "../processor.js";
+import { matchTransactions, matchInventory } from "../processor.js";
 import { log, formatDate, fitColumns, downloadJSON } from "../utils.js";
 import { getRatesMap, getRateFromMap } from "../currency.js";
 
@@ -197,28 +197,33 @@ export function initReports(state) {
       const month = parseInt(monthStr);
       const targetCurrency = document.getElementById("currency-select").value;
 
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59);
+      const reportStartDate = new Date(year, month - 1, 1);
+      const reportEndDate = new Date(year, month, 0, 23, 59, 59);
 
-      log(`Fetching rates for ${yearStr}-${monthStr}...`);
+      let ratesStart = new Date(reportStartDate);
 
-      // const startStr = startDate.toISOString().split("T")[0];
-      const today = new Date();
-      const effectiveEndDate = endDate > today ? today : endDate;
-      const endStr = effectiveEndDate.toISOString().split("T")[0];
+      if (state.allBuys.length > 0) {
+        const oldestBuyDate = state.allBuys.reduce((min, b) => {
+          const d = b.created_at || new Date();
+          return d < min ? d : min;
+        }, new Date());
 
-      const bufferDate = new Date(startDate);
-      bufferDate.setDate(bufferDate.getDate() - 7);
-      const bufferStr = bufferDate.toISOString().split("T")[0];
+        if (oldestBuyDate < ratesStart) ratesStart = oldestBuyDate;
+      }
 
-      // Download rates
-      // 1. Target Currency Rate (USD -> PLN/EUR/etc)
-      // 2. Source Currency Rates (CNY -> USD, EUR -> USD)
+      ratesStart.setDate(ratesStart.getDate() - 7);
+
+      const ratesEnd = new Date();
+
+      const startStr = ratesStart.toISOString().split("T")[0];
+      const endStr = ratesEnd.toISOString().split("T")[0];
+
+      log(`Fetching rates from ${startStr} to ${endStr}...`);
 
       const [usdToTargetMap, cnyToUsdMap, eurToUsdMap] = await Promise.all([
-        getRatesMap("USD", targetCurrency, bufferStr, endStr),
-        getRatesMap("CNY", "USD", bufferStr, endStr),
-        getRatesMap("EUR", "USD", bufferStr, endStr),
+        getRatesMap("USD", targetCurrency, startStr, endStr),
+        getRatesMap("CNY", "USD", startStr, endStr),
+        getRatesMap("EUR", "USD", startStr, endStr),
       ]);
 
       const wb = XLSX.utils.book_new();
@@ -226,31 +231,29 @@ export function initReports(state) {
       // Helper: Universal Converter
       const getPrices = (item) => {
         let priceUSD = item.price;
+        const dateToCheck = item.created_at || new Date();
 
-        // 1. To USD
         if (item.currency === "CNY") {
-          const r = getRateFromMap(item.created_at, cnyToUsdMap);
+          const r = getRateFromMap(dateToCheck, cnyToUsdMap);
           if (r > 0) priceUSD = item.price * r;
         } else if (item.currency === "EUR") {
-          const r = getRateFromMap(item.created_at, eurToUsdMap);
+          const r = getRateFromMap(dateToCheck, eurToUsdMap);
           if (r > 0) priceUSD = item.price * r;
         }
 
-        // 2. Convert to Target
         let priceTarget = priceUSD;
         if (targetCurrency !== "USD") {
-          const r = getRateFromMap(item.created_at, usdToTargetMap);
+          const r = getRateFromMap(dateToCheck, usdToTargetMap);
           if (r > 0) priceTarget = priceUSD * r;
         }
 
         return { usd: priceUSD, target: priceTarget };
       };
 
-      // SHEET 1: BUYS
+      // === SHEET 1: BUYS ===
       const monthlyBuys = state.allBuys.filter(
-        (b) => b.created_at >= startDate && b.created_at <= endDate,
+        (b) => b.created_at >= reportStartDate && b.created_at <= reportEndDate,
       );
-
       const buysRows = monthlyBuys.map((b) => {
         const prices = getPrices(b);
         return {
@@ -265,7 +268,7 @@ export function initReports(state) {
           [`Price (${targetCurrency})`]: parseFloat(prices.target.toFixed(2)),
         };
       });
-
+      // Total Buys logic
       const totalBuyLocal = buysRows.reduce(
         (sum, r) => sum + r[`Price (${targetCurrency})`],
         0,
@@ -281,11 +284,10 @@ export function initReports(state) {
       wsBuys["!cols"] = fitColumns(buysRows);
       XLSX.utils.book_append_sheet(wb, wsBuys, "Buys");
 
-      // SHEET 2: SALES
+      // === SHEET 2: SALES ===
       const monthlySales = state.allSales.filter(
-        (s) => s.created_at >= startDate && s.created_at <= endDate,
+        (s) => s.created_at >= reportStartDate && s.created_at <= reportEndDate,
       );
-
       const salesRows = monthlySales.map((s) => {
         const prices = getPrices(s);
         return {
@@ -300,7 +302,7 @@ export function initReports(state) {
           [`Income (${targetCurrency})`]: parseFloat(prices.target.toFixed(2)),
         };
       });
-
+      // ... (Total Sales logic) ...
       const totalSellLocal = salesRows.reduce(
         (sum, r) => sum + r[`Income (${targetCurrency})`],
         0,
@@ -316,8 +318,77 @@ export function initReports(state) {
       wsSales["!cols"] = fitColumns(salesRows);
       XLSX.utils.book_append_sheet(wb, wsSales, "Sales");
 
-      const stockData = [["Stocktaking", "Feature Coming Soon"]];
-      const wsStock = XLSX.utils.aoa_to_sheet(stockData);
+      // === SHEET 3: STOCKTAKING ===
+      let wsStock;
+
+      if (state.inventory && state.inventory.length > 0) {
+        const matchedInventory = matchInventory(state.inventory, state.allBuys);
+
+        const stockRows = matchedInventory.map((item) => {
+          const tempItem = {
+            price: item.buy_price,
+            currency: item.buy_currency,
+            created_at: item.buy_date || new Date(),
+          };
+          const prices = getPrices(tempItem);
+
+          return {
+            "Item Name": item.item_name,
+            Float: item.float_val ? parseFloat(item.float_val).toFixed(9) : "-",
+            Pattern:
+              item.pattern !== -1 && item.pattern !== null ? item.pattern : "-",
+            "Current Location": item.source,
+
+            "Buy Source": item.buy_source,
+            "Buy Date": formatDate(item.buy_date),
+            "Buy Price (Orig)": `${item.buy_price} ${item.buy_currency}`,
+
+            "Cost Basis (USD)": parseFloat(prices.usd.toFixed(2)),
+            [`Valuation (${targetCurrency})`]: parseFloat(
+              prices.target.toFixed(2),
+            ),
+          };
+        });
+
+        const totalInventoryValue = stockRows.reduce(
+          (sum, r) => sum + r[`Valuation (${targetCurrency})`],
+          0,
+        );
+
+        wsStock = XLSX.utils.json_to_sheet(stockRows);
+        wsStock["!autofilter"] = { ref: "A1:I1" };
+        wsStock["!cols"] = fitColumns(stockRows);
+
+        // IMMUTABLE TOTAL (Top Right)
+        const totalColIdx = 10; // K
+
+        // Header (K1)
+        const totalHeaderRef = XLSX.utils.encode_cell({ r: 0, c: totalColIdx });
+        wsStock[totalHeaderRef] = { t: "s", v: "TOTAL INVENTORY VALUE" };
+
+        // Value (K2) -> SUM(I2:I...)
+        const totalValueRef = XLSX.utils.encode_cell({ r: 1, c: totalColIdx });
+        const lastRow = stockRows.length + 1;
+
+        wsStock[totalValueRef] = {
+          t: "n",
+          v: totalInventoryValue,
+          f: `SUM(I2:I${lastRow})`,
+        };
+
+        // Range
+        const range = XLSX.utils.decode_range(wsStock["!ref"]);
+        if (range.e.c < totalColIdx) {
+          range.e.c = totalColIdx;
+          wsStock["!ref"] = XLSX.utils.encode_range(range);
+        }
+        if (!wsStock["!cols"][totalColIdx])
+          wsStock["!cols"][totalColIdx] = { wch: 25 };
+      } else {
+        const stockData = [["Stocktaking"], ["No inventory data found."]];
+        wsStock = XLSX.utils.aoa_to_sheet(stockData);
+      }
+
       XLSX.utils.book_append_sheet(wb, wsStock, "Stocktaking");
 
       XLSX.writeFile(

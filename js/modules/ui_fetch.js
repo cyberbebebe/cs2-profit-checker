@@ -10,6 +10,7 @@ export function initFetch(state) {
     btn.disabled = true;
     state.allSales = [];
     state.allBuys = [];
+    state.inventory = [];
 
     // 1. Active fetchers
     const enabledFetchers = state.fetchers.filter((f) => {
@@ -61,6 +62,21 @@ export function initFetch(state) {
         completedSteps += 2 - (completedSteps % 2); // Hack to complete this fetcher's steps
         const pct = Math.round((completedSteps / totalSteps) * 100);
         progressFill.style.width = `${pct}%`;
+      }
+
+      if (f.name === "Steam") {
+        progressText.textContent = `Fetching Steam Inventory...`;
+        const items = await f.getInventory();
+        if (items && items.length > 0) {
+          state.inventory.push(...items);
+        }
+      }
+      if (f.name === "DMarket") {
+        progressText.textContent = `Fetching DMarket Inventory...`;
+        const items = await f.getInventory();
+        if (items && items.length > 0) {
+          state.inventory.push(...items);
+        }
       }
     });
 

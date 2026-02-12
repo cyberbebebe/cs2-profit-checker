@@ -1,87 +1,126 @@
 import { log } from "./utils.js";
 
-const CACHE = {};
+const ratesCache = {};
 
-export async function getRatesMap(fromCcy, toCcy, startDateStr, endDateStr) {
-  if (fromCcy === toCcy) return new Map();
+export async function getRatesMap(from, to, startDateStr, endDateStr) {
+  if (from === to) return {}; // Базова оптимізація
 
-  const cacheKey = `${fromCcy}_${toCcy}_${startDateStr}_${endDateStr}`;
-  if (CACHE[cacheKey]) return CACHE[cacheKey];
+  const cacheKey = `${from}_${to}_${startDateStr}_${endDateStr}`;
+  if (ratesCache[cacheKey]) return ratesCache[cacheKey];
 
-  let map = new Map();
+  const start = new Date(startDateStr);
+  const end = new Date(endDateStr);
 
-  if (toCcy === "PLN") {
-    // NBP
-    map = await getNBPRatesMap(fromCcy, startDateStr, endDateStr);
-  } else {
-    // Frankfurter
-    map = await getFrankfurterRatesMap(
-      fromCcy,
-      toCcy,
-      startDateStr,
-      endDateStr,
+  const diffTime = Math.abs(end - start);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays > 365) {
+    log(
+      `Period ${diffDays} days is too long for NBP/API. Splitting request...`,
     );
-  }
 
-  CACHE[cacheKey] = map;
-  return map;
-}
+    let mergedMap = {};
+    let currentStart = new Date(start);
 
-// NBP Logic (PLN)
-async function getNBPRatesMap(currency, startDateStr, endDateStr) {
-  const rateMap = new Map();
-  const url = `https://api.nbp.pl/api/exchangerates/rates/a/${currency}/${startDateStr}/${endDateStr}/?format=json`;
+    const chunks = [];
 
-  try {
-    const resp = await fetch(url);
-    if (!resp.ok) return rateMap;
-    const data = await resp.json();
-    if (data.rates) {
-      data.rates.forEach((r) => rateMap.set(r.effectiveDate, r.mid));
+    while (currentStart < end) {
+      let currentEnd = new Date(currentStart);
+      currentEnd.setFullYear(currentStart.getFullYear() + 1);
+
+      if (currentEnd > end) currentEnd = new Date(end);
+
+      const sStr = currentStart.toISOString().split("T")[0];
+      const eStr = currentEnd.toISOString().split("T")[0];
+
+      chunks.push({ sStr, eStr });
+
+      currentStart = new Date(currentEnd);
+      currentStart.setDate(currentStart.getDate() + 1);
     }
-  } catch (e) {
-    log(`NBP Fetch Error: ${e.message}`);
+
+    const results = await Promise.all(
+      chunks.map((chunk) =>
+        fetchRatesInternal(from, to, chunk.sStr, chunk.eStr),
+      ),
+    );
+
+    results.forEach((map) => {
+      Object.assign(mergedMap, map);
+    });
+
+    ratesCache[cacheKey] = mergedMap;
+    return mergedMap;
   }
-  return rateMap;
+
+  const result = await fetchRatesInternal(from, to, startDateStr, endDateStr);
+  ratesCache[cacheKey] = result;
+  return result;
 }
 
-// Frankfurter Logic (EUR, GBP, etc.)
-async function getFrankfurterRatesMap(from, to, start, end) {
-  const rateMap = new Map();
-  const url = `https://api.frankfurter.dev/v1/${start}..${end}?from=${from}&to=${to}`;
-
+async function fetchRatesInternal(from, to, startStr, endStr) {
+  const map = {};
   try {
+    let url = "";
+
+    // NBP API (PLN)
+    if (to === "PLN" && from !== "PLN") {
+      // NBP to PLN (USD or CNY -> PLN)
+      url = `https://api.nbp.pl/api/exchangerates/rates/a/${from}/${startStr}/${endStr}/?format=json`;
+    }
+    // Frankfurter (Cross rates)
+    else {
+      url = `https://api.frankfurter.app/${startStr}..${endStr}?from=${from}&to=${to}`;
+    }
+
     const resp = await fetch(url);
-    if (!resp.ok) return rateMap;
+    if (!resp.ok) {
+      // NBP
+      if (resp.status !== 404) {
+        console.warn(
+          `[Currency] Failed to fetch ${from}->${to} (${startStr} to ${endStr}): Status ${resp.status}`,
+        );
+      }
+      return {};
+    }
+
     const data = await resp.json();
 
-    // Response format: { rates: { "2024-01-02": { "EUR": 0.95 }, ... } }
-    if (data.rates) {
-      for (const [date, ratesObj] of Object.entries(data.rates)) {
-        if (ratesObj[to]) {
-          rateMap.set(date, ratesObj[to]);
-        }
+    // NBP
+    if (data.rates && Array.isArray(data.rates)) {
+      data.rates.forEach((r) => {
+        map[r.effectiveDate] = r.mid;
+      });
+    }
+    // Frankfurter
+    else if (data.rates && !Array.isArray(data.rates)) {
+      for (const [date, rates] of Object.entries(data.rates)) {
+        map[date] = rates[to];
       }
     }
   } catch (e) {
-    log(`Frankfurter Fetch Error: ${e.message}`);
+    console.error(`[Currency] Error fetching ${from}->${to}:`, e);
   }
-  return rateMap;
+  return map;
 }
 
-/**
- * Helper to get rate from any Map (NBP or Frankfurter).
- */
-export function getRateFromMap(dateObj, rateMap) {
-  if (!rateMap || rateMap.size === 0) return 0; // Return 0 if no data
+export function getRateFromMap(dateObj, map) {
+  if (!dateObj || !map) return 0;
 
-  let d = new Date(dateObj);
+  const yyyy = dateObj.getFullYear();
+  const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const dd = String(dateObj.getDate()).padStart(2, "0");
+  const key = `${yyyy}-${mm}-${dd}`;
+
+  if (map[key]) return map[key];
+
+  // Find newest available rate
+  const tempDate = new Date(dateObj);
   for (let i = 0; i < 7; i++) {
-    const dateStr = d.toISOString().split("T")[0];
-    if (rateMap.has(dateStr)) {
-      return rateMap.get(dateStr);
-    }
-    d.setDate(d.getDate() - 1);
+    tempDate.setDate(tempDate.getDate() - 1);
+    const k = tempDate.toISOString().split("T")[0];
+    if (map[k]) return map[k];
   }
+
   return 0;
 }

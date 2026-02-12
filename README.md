@@ -1,6 +1,6 @@
-# Automated Profit Calculator for CS2 Traders
+# Automated Profit & Balance Calculator for CS2 Traders
 
-### Supported Marketplaces:
+## Supported Marketplaces:
 
 **DMarket, CSFloat, Skinport, Buff163, BuffMarket, CSMoney & Youpin**
 
@@ -8,11 +8,12 @@ This browser extension aggregates transaction history from multiple marketplaces
 
 ## 🚀 Features
 
-- **Cross-Marketplace Matching:** Matches purchases and sales across different CS2 skin marketplaces using intelligent item signatures (based on Float, Pattern, and Name).
+- **Cross-Marketplace Matching:** Matches purchases and sales across different CS2 skin marketplaces using intelligent item signatures (based on Float, Pattern, and Item name).
 - **Smart Calculations:** Automatically accounts for specific fees of each marketplace to calculate **true** net profit.
-- **Balance Calculator:** Calculates the total wallet balance from all marketplaces turned on by pressing "Balance" button.
-- **Excel Reports:** Generates a formatted `.xlsx` file with "Profit" column, carefully calculated Total Profit and auto-filters for sorting by Profit ($), Profit (%), Sell Income or Date.
-- **Verified Profit Report:** The extension processes only verified\* transactions for Profit Reports. Tax Reports uses createdAt timestamps.
+- **Balance Calculator:** Calculates the total wallet balance from all connected marketplaces by pressing "Balance" button.
+- **Profit Reports:** Generates a formatted `.xlsx` file with "Profit" column, carefully calculated Total Profit and auto-filters for sorting by Profit ($), Profit (%), Sell Income or Date.
+- **Verified\* Profit Report:** The extension processes only verified\* transactions for Profit Reports. Tax Reports uses createdAt timestamps.
+- **Tax-like Reports:** Generates a formatted `.xlsx` file suitable for real legal tax processes. The 'Stocktaking' is taken at the current moment and requires manual adjustment for items when a buy transaction was not found.
 
 _\*Verified transactions indicate successful deals. For recent transactions, the date aligns with the payout time (after the trade-protection period). For older transactions, it aligns with the marketplace success timestamp._
 
@@ -31,4 +32,4 @@ _\*Verified transactions indicate successful deals. For recent transactions, the
 
 _Developed as an interesting challenge and a useful tool for enthusiasts._
 
-> **Note:** This tool provides a "Tax-like" report structure to assist with accounting, but it does not replace professional tax advice.
+> **Note:** This tool provides a "Tax-like" report structure to assist with accounting, but it does not replace professional tax advice. Contact a specialist for clarification.
