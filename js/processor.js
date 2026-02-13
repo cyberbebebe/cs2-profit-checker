@@ -1,11 +1,11 @@
 import { generateSignature, log } from "./utils.js";
 
 // Helper to get a comparable date for matching logic
-// Priority: VerifiedAt > CreatedAt > Date.now()
+// Priority: VerifiedAt > CreatedAt ( > Date.now() )
 function getTxDate(tx) {
   if (tx.verified_at) return tx.verified_at;
   if (tx.created_at) return tx.created_at;
-  return new Date(0); // Should not happen for valid tx
+  return new Date(0); // Critical moment with no buy time, should not happen
 }
 
 export function matchTransactions(sales, buys) {
@@ -53,7 +53,7 @@ export function matchTransactions(sales, buys) {
 
     if (hasMeta && potentialBuys.length > 0) {
       for (let i = 0; i < potentialBuys.length; i++) {
-        if (getTxDate(potentialBuys[i]) < saleDate) {
+        if (getTxDate(potentialBuys[i]) <= saleDate) {
           matchIndex = i;
           match = potentialBuys[i];
           matchType = "meta";
@@ -67,7 +67,7 @@ export function matchTransactions(sales, buys) {
       const assetBuys = buyAssetMap[sale.asset_id];
       if (assetBuys && assetBuys.length > 0) {
         for (let i = 0; i < assetBuys.length; i++) {
-          if (getTxDate(assetBuys[i]) < saleDate) {
+          if (getTxDate(assetBuys[i]) <= saleDate) {
             match = assetBuys[i];
             matchType = "asset_id";
 
