@@ -27,8 +27,10 @@ export class BuffMarketFetcher extends BaseFetcher {
       if (!data) return { amount: 0, currency: "USD" };
 
       const usd = parseFloat(data.data.total_amount || 0);
+      const frozen = parseFloat(data.data.frozen_amount || 0);
+      const pending = parseFloat(data.data.pending_divide_amount || 0);
 
-      return { amount: usd, currency: "USD" };
+      return { amount: usd + frozen + pending, currency: "USD" };
     } catch (e) {
       console.error("[BuffMarket] Balance error:", e);
       return { amount: 0, currency: "USD" };
@@ -135,7 +137,6 @@ export class BuffMarketFetcher extends BaseFetcher {
       }
 
       page++;
-      // Go used 2 seconds sleep, JS needs await
       await this.sleep(500);
     }
 

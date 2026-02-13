@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "CS2 Profit & Tax Manager",
-  "version": "1.5",
-  "description": "CS2 marketplaces transactions & inventory aggregator. Calculate total balance, Profit and Tax Reports. ",
+  "name": "CS2 Profit Checker & Tax Manager",
+  "version": "1.5.1",
+  "description": "CS2 marketplaces transactions & inventory aggregator. Calculate total balance, generate Profit and Tax Reports.",
   "permissions": ["storage", "unlimitedStorage", "cookies", "scripting"],
   "host_permissions": [
     "*://*.dmarket.com/*",
