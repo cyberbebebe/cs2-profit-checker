@@ -70,14 +70,22 @@ export function initReports(state) {
           return price * rate;
         };
 
-        const buyDate = m.buy_verified_at || m.buy_created_at || new Date();
-        const sellDate = m.sell_verified_at || m.sell_created_at;
+        const displayBuyDate = m.buy_verified_at || m.buy_created_at;
+        const conversionBuyDate = displayBuyDate || new Date();
 
-        const buyPriceUSD = convertToUSD(m.buy_price, m.buy_currency, buyDate);
+        const displaySellDate = m.sell_verified_at || m.sell_created_at;
+        const conversionSellDate = displaySellDate || new Date();
+
+        const buyPriceUSD = convertToUSD(
+          m.buy_price,
+          m.buy_currency,
+          conversionBuyDate,
+        );
+
         const sellPriceUSD = convertToUSD(
           m.sell_price,
           m.sell_currency,
-          sellDate,
+          conversionSellDate,
         );
 
         let profitUSD = 0;
@@ -95,12 +103,13 @@ export function initReports(state) {
           Phase: m.phase,
           "Buy Source": m.buy_source,
           "Buy Price ($)": parseFloat(buyPriceUSD.toFixed(2)),
-          "Buy Date": formatDate(buyDate),
+          "Buy Date": formatDate(displayBuyDate),
+
           "Sell Source": m.sell_source,
           "Sell Income ($)": parseFloat(sellPriceUSD.toFixed(2)),
-          "Sell Date": formatDate(sellDate),
+          "Sell Date": formatDate(displaySellDate),
           "Profit ($)": parseFloat(profitUSD.toFixed(2)),
-          "Profit %": profitPerc,
+          "Profit %": profitPerc, // Форматування відсотків робиться бібліотекою XLSX або залиште як число
         };
       });
 
