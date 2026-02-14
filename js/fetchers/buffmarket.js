@@ -26,7 +26,7 @@ export class BuffMarketFetcher extends BaseFetcher {
 
       if (!data) return { amount: 0, currency: "USD" };
 
-      const usd = parseFloat(data.data.total_amount || 0);
+      const usd = parseFloat(data.data.cash_amount || 0);
       const frozen = parseFloat(data.data.frozen_amount || 0);
       const pending = parseFloat(data.data.pending_divide_amount || 0);
 
