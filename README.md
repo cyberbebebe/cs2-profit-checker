@@ -1,8 +1,6 @@
 # Automated Profit & Balance Calculator for CS2 Traders
 
-## Supported Marketplaces:
-
-**DMarket, CSFloat, Skinport, Buff163, BuffMarket, CSMoney & Youpin**
+## Supported Marketplaces: **CSFloat, DMarket, Skinport, Buff163, BuffMarket, CSMoney & Youpin**
 
 This browser extension aggregates transaction history from multiple marketplaces, matches buy/sell pairs using crafted item signatures, calculates total wallet balance and generates precise **Profit** and **Tax-like** reports in Excel and JSON formats.
 
