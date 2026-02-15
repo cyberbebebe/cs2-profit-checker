@@ -41,7 +41,7 @@ _\*Verified transactions indicate successful deals. For recent transactions, the
 
 ## ℹ️ Important notes:
 
-1. Steam community market history will NOT fetch. There is a few reasons:
+1. The Steam Community Market history will not be fetched. There are a few reasons:
    - It have 500 transactions per request limit and you can't use filters to request only cs2 transactions
    - Requires to inspect every cs2(cs:go) item you sold or bought. This will lead to spam inspect apis of some services like csfloat or cs2trader.
    - You and I mostly buy and sell items on 3rd-party marketplaces.
