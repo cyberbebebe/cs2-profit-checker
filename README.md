@@ -2,8 +2,6 @@
 
 ## Supported Marketplaces: **CSFloat, DMarket, Skinport, Buff163, BuffMarket, CSMoney Market & Youpin**
 
-This browser extension aggregates transaction history from multiple marketplaces, matches buy/sell pairs using crafted item signatures, calculates total wallet balance and generates precise **Profit** and **Tax-ready** reports in Excel and JSON formats.
-
 ## 🔍 What it does?
 
 - Checks if you're logged in on selected marketplaces
