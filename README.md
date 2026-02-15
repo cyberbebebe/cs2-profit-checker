@@ -46,7 +46,7 @@ _\*Verified transactions indicate successful deals. For recent transactions, the
    - Requires to inspect every cs2(cs:go) item you sold or bought. This will lead to spam inspect apis of some services like csfloat or cs2trader.
    - You and I mostly buy and sell items on 3rd-party marketplaces.
 
-I think is acceptable omission.
+   I think is acceptable omission.
 
 2. Long fetching time. It fetches FULL transaction history from 2014 at each marketplace you set. The main 3 marketplaces that fetches really long are:
    - Buff163 - 200 transactions per request (each take ~3 seconds)
