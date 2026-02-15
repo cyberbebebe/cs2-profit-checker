@@ -9,9 +9,11 @@ This browser extension aggregates transaction history from multiple marketplaces
 - Checks if you're logged in on selected marketplaces
 - Fetches FULL transaction history on all enabled marketplaces
 - Handles currencies (CNY, EUR) and sale fees automatically
-- Calculates total wallet balance on all major marketplaces, this includes usable, pending and frozen (in bargains) balances
-- Crafts clean, detailed Profit and Tax-ready reports. Tax-ready reports support USD, EUR and PLN currencies currently
-- Operates everything locally on your PC. Code of each file is open.
+- Calculates total wallet balance on selected marketplaces. This includes usable, pending and frozen (in bargains)
+- Crafts clean, detailed Profit and Tax-ready reports. Tax-ready reports support USD, EUR\* and PLN currencies
+- Operates everything locally on your PC. Code of each file is open
+
+_\* EUR rate in Tax-ready reports are not from ECB, i use frankfurter api for this._
 
 ## 🚀 Features
 
