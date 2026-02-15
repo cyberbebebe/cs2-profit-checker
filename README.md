@@ -4,6 +4,15 @@
 
 This browser extension aggregates transaction history from multiple marketplaces, matches buy/sell pairs using crafted item signatures, calculates total wallet balance and generates precise **Profit** and **Tax-like** reports in Excel and JSON formats.
 
+## 🔍 What it does?
+
+- Checks if you're logged in on selected marketplaces
+- Fetches FULL transaction history on all enabled marketplaces
+- Handles currencies (CNY, EUR) and sale fees automatically
+- Calculates total wallet balance on all major marketplaces, this includes usable, pending and frozen (in bargains) balances
+- Crafts clean, detailed Profit and Tax-ready reports. Tax-ready reports support USD, EUR and PLN currencies currently
+- Operates everything locally on your PC. Code of each file is open.
+
 ## 🚀 Features
 
 - **Cross-Marketplace Matching:** Matches purchases and sales across different CS2 skin marketplaces using intelligent item signatures (based on Float, Pattern, and Item name).
@@ -17,7 +26,7 @@ _\*Verified transactions indicate successful deals. For recent transactions, the
 
 ## 📦 Setup / Installation
 
-1. Download the `CS2ProfitCheckerExtension.zip` from the **[Releases page](https://github.com/cyberbebebe/cs2-profit-checker/releases)**.
+1. Download the latest extension `*.zip` from the **[Releases page](https://github.com/cyberbebebe/cs2-profit-checker/releases)**.
 2. Unzip the archive to a folder on your computer.
 3. Open your browser (Chrome, Brave, Edge, Opera, etc.):
    - Go to `chrome://extensions/` (or usually "Menu -> Extensions -> Manage Extensions").
