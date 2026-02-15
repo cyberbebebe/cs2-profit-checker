@@ -21,7 +21,8 @@ export class BuffMarketFetcher extends BaseFetcher {
   }
   async getBalance() {
     try {
-      const url = "https://api.buff.market/api/asset/get_brief_asset/";
+      const url =
+        "https://api.buff.market/api/asset/get_brief_asset/?with_pending_divide_amount=1";
       const data = await this.fetchWithAuth(url);
 
       if (!data) return { amount: 0, currency: "USD" };
