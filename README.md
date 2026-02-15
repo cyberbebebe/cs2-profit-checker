@@ -42,11 +42,11 @@ _\*Verified transactions indicate successful deals. For recent transactions, the
 ## ℹ️ Important notes:
 
 1. Steam community market history will NOT fetch. There is a few reasons:
+   - It have 500 transactions per request limit and you can't use filters to request only cs2 transactions
+   - Requires to inspect every cs2(cs:go) item you sold or bought. This will lead to spam inspect apis of some services like csfloat or cs2trader.
+   - You and I mostly buy and sell items on 3rd-party marketplaces.
 
-- It have 500 transactions per request limit and you can't use filters to request only cs2 transactions
-- Requires to inspect every cs2(cs:go) item you sold or bought. This will lead to spam inspect apis of some services like csfloat or cs2trader.
-- You and I mostly buy and sell items on 3rd-party marketplaces.
-  I think is acceptable omission.
+I think is acceptable omission.
 
 2. Long fetching time. It fetches FULL transaction history from 2014 at each marketplace you set. The main 3 marketplaces that fetches really long are:
    - Buff163 - 200 transactions per request (each take ~3 seconds)
@@ -57,6 +57,6 @@ _\*Verified transactions indicate successful deals. For recent transactions, the
 
 4. Skinport sales handling is a guess. I can't sell items here, so i can't check what fields for clean balance or fees skinport have for "Sale" transactions.
 
-### Created for the CS2 trading community by a CS2 trader
+## Created for the CS2 trading community and enthusiasts by a CS2 trader
 
-_Developed as an interesting challenge and a useful tool for enthusiasts._
+_Developed as an interesting challenge and a useful tool._
