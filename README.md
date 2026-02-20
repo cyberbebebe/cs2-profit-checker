@@ -28,11 +28,7 @@ Excelize - High-performance Excel report generation.
 
 ### Quick start (No installation required)
 
-1. Download: Go to the Releases Page and download the latest .zip file (e.g., CS2.Profit.Checker.v1.0.zip)
-
-   Open config/secrets.json and fill:
-   1. API keys (DMarket Private key & CSFloat API Key)
-   2. For scraped marketplaces (Buff, Youpin, CSMoney), follow the instructions inside the JSON file to get your session cookies/headers from your browser.
+1. Download: Go to the Releases Page and download the latest `.zip` file (e.g., CS2.Profit.Checker.v1.0.zip)
 
 2. Extract: Unzip the downloaded archive to a folder on your computer
 
