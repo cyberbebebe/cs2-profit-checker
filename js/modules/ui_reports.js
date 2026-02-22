@@ -227,36 +227,53 @@ export function initReports(state) {
       const startStr = ratesStart.toISOString().split("T")[0];
       const endStr = ratesEnd.toISOString().split("T")[0];
 
-      log(`Fetching rates from ${startStr} to ${endStr}...`);
+      log(`Fetching direct rates from ${startStr} to ${endStr}...`);
 
-      const [usdToTargetMap, cnyToUsdMap, eurToUsdMap] = await Promise.all([
-        getRatesMap("USD", targetCurrency, startStr, endStr),
-        getRatesMap("CNY", "USD", startStr, endStr),
-        getRatesMap("EUR", "USD", startStr, endStr),
-      ]);
+      const usedCurrencies = new Set();
+      state.allBuys.forEach((b) => usedCurrencies.add(b.currency || "USD"));
+      state.allSales.forEach((s) => usedCurrencies.add(s.currency || "USD"));
+
+      const targetMaps = {};
+
+      const fetchPromises = [];
+      for (const cur of usedCurrencies) {
+        if (cur !== targetCurrency) {
+          fetchPromises.push(
+            getRatesMap(cur, targetCurrency, startStr, endStr).then((map) => {
+              targetMaps[cur] = map;
+            }),
+          );
+        }
+      }
+      await Promise.all(fetchPromises);
 
       const wb = XLSX.utils.book_new();
 
-      // Helper: Universal Converter
       const getPrices = (item) => {
-        let priceUSD = item.price;
+        const cur = item.currency || "USD";
         const dateToCheck = item.created_at || new Date();
-
-        if (item.currency === "CNY") {
-          const r = getRateFromMap(dateToCheck, cnyToUsdMap);
-          if (r > 0) priceUSD = item.price * r;
-        } else if (item.currency === "EUR") {
-          const r = getRateFromMap(dateToCheck, eurToUsdMap);
-          if (r > 0) priceUSD = item.price * r;
+        
+        // Zloty fix, previous day for currency rates
+        if (targetCurrency === "PLN") {
+          dateToCheck.setDate(dateToCheck.getDate() - 1);
         }
 
-        let priceTarget = priceUSD;
-        if (targetCurrency !== "USD") {
-          const r = getRateFromMap(dateToCheck, usdToTargetMap);
-          if (r > 0) priceTarget = priceUSD * r;
+        let priceTarget = item.price;
+        let appliedRate = 1;
+
+        if (cur !== targetCurrency) {
+          appliedRate = getRateFromMap(dateToCheck, targetMaps[cur]);
+          if (appliedRate > 0) {
+            priceTarget = item.price * appliedRate;
+          }
         }
 
-        return { usd: priceUSD, target: priceTarget };
+        return {
+          orig: item.price,
+          cur: cur,
+          target: priceTarget,
+          rate: appliedRate,
+        };
       };
 
       // === SHEET 1: BUYS ===
@@ -268,28 +285,32 @@ export function initReports(state) {
         return {
           "Item Name": b.item_name,
           Float: b.float_val ? b.float_val.toFixed(8) : "-",
-          Pattern: b.pattern,
+          Pattern: b.pattern !== -1 && b.pattern !== null ? b.pattern : "-",
           Phase: b.phase || "",
           "Buy Date": formatDate(b.created_at),
           "Buy Source": b.source,
           "Tx ID": b.tx_id,
-          "Price (USD)": parseFloat(prices.usd.toFixed(2)),
+          "Price (Orig)": `${prices.orig} ${prices.cur}`,
+          "Exch. Rate":
+            prices.rate > 0 && prices.cur !== targetCurrency
+              ? prices.rate.toFixed(4)
+              : "-",
           [`Price (${targetCurrency})`]: parseFloat(prices.target.toFixed(2)),
         };
       });
-      // Total Buys logic
-      const totalBuyLocal = buysRows.reduce(
-        (sum, r) => sum + r[`Price (${targetCurrency})`],
+
+      const totalBuyTarget = buysRows.reduce(
+        (sum, r) => sum + (r[`Price (${targetCurrency})`] || 0),
         0,
       );
       buysRows.push({});
       buysRows.push({
         "Item Name": "TOTAL SPENT:",
-        [`Price (${targetCurrency})`]: parseFloat(totalBuyLocal.toFixed(2)),
+        [`Price (${targetCurrency})`]: parseFloat(totalBuyTarget.toFixed(2)),
       });
 
       const wsBuys = XLSX.utils.json_to_sheet(buysRows);
-      wsBuys["!autofilter"] = { ref: "A1:I1" };
+      wsBuys["!autofilter"] = { ref: "A1:J1" };
       wsBuys["!cols"] = fitColumns(buysRows);
       XLSX.utils.book_append_sheet(wb, wsBuys, "Buys");
 
@@ -302,28 +323,32 @@ export function initReports(state) {
         return {
           "Item Name": s.item_name,
           Float: s.float_val ? s.float_val.toFixed(8) : "-",
-          Pattern: s.pattern,
+          Pattern: s.pattern !== -1 && s.pattern !== null ? s.pattern : "-",
           Phase: s.phase || "",
           "Sell Date": formatDate(s.created_at),
           "Sell Source": s.source,
           "Tx ID": s.tx_id,
-          "Income (USD)": parseFloat(prices.usd.toFixed(2)),
+          "Income (Orig)": `${prices.orig} ${prices.cur}`,
+          "Exch. Rate":
+            prices.rate > 0 && prices.cur !== targetCurrency
+              ? prices.rate.toFixed(4)
+              : "-",
           [`Income (${targetCurrency})`]: parseFloat(prices.target.toFixed(2)),
         };
       });
-      // Total Sales
-      const totalSellLocal = salesRows.reduce(
-        (sum, r) => sum + r[`Income (${targetCurrency})`],
+
+      const totalSellTarget = salesRows.reduce(
+        (sum, r) => sum + (r[`Income (${targetCurrency})`] || 0),
         0,
       );
       salesRows.push({});
       salesRows.push({
         "Item Name": "TOTAL INCOME:",
-        [`Income (${targetCurrency})`]: parseFloat(totalSellLocal.toFixed(2)),
+        [`Income (${targetCurrency})`]: parseFloat(totalSellTarget.toFixed(2)),
       });
 
       const wsSales = XLSX.utils.json_to_sheet(salesRows);
-      wsSales["!autofilter"] = { ref: "A1:I1" };
+      wsSales["!autofilter"] = { ref: "A1:J1" };
       wsSales["!cols"] = fitColumns(salesRows);
       XLSX.utils.book_append_sheet(wb, wsSales, "Sales");
 
@@ -335,8 +360,8 @@ export function initReports(state) {
 
         const stockRows = matchedInventory.map((item) => {
           const tempItem = {
-            price: item.buy_price,
-            currency: item.buy_currency,
+            price: item.buy_price || 0,
+            currency: item.buy_currency || "USD",
             created_at: item.buy_date || new Date(),
           };
           const prices = getPrices(tempItem);
@@ -350,9 +375,12 @@ export function initReports(state) {
 
             "Buy Source": item.buy_source,
             "Buy Date": formatDate(item.buy_date),
-            "Buy Price (Orig)": `${item.buy_price} ${item.buy_currency}`,
 
-            "Cost Basis (USD)": parseFloat(prices.usd.toFixed(2)),
+            "Cost Basis (Orig)": `${prices.orig} ${prices.cur}`,
+            "Exch. Rate":
+              prices.rate > 0 && prices.cur !== targetCurrency
+                ? prices.rate.toFixed(4)
+                : "-",
             [`Valuation (${targetCurrency})`]: parseFloat(
               prices.target.toFixed(2),
             ),
@@ -360,7 +388,7 @@ export function initReports(state) {
         });
 
         const totalInventoryValue = stockRows.reduce(
-          (sum, r) => sum + r[`Valuation (${targetCurrency})`],
+          (sum, r) => sum + (r[`Valuation (${targetCurrency})`] || 0),
           0,
         );
 
@@ -369,14 +397,20 @@ export function initReports(state) {
         wsStock["!cols"] = fitColumns(stockRows);
 
         // IMMUTABLE TOTAL (Top Right)
-        const totalColIdx = 10; // K
+        const totalColIdx = 8;
 
-        // Header (K1)
-        const totalHeaderRef = XLSX.utils.encode_cell({ r: 0, c: totalColIdx });
+        // Header
+        const totalHeaderRef = XLSX.utils.encode_cell({
+          r: 0,
+          c: totalColIdx + 2,
+        }); // K1
         wsStock[totalHeaderRef] = { t: "s", v: "TOTAL INVENTORY VALUE" };
 
-        // Value (K2) -> SUM(I2:I...)
-        const totalValueRef = XLSX.utils.encode_cell({ r: 1, c: totalColIdx });
+        // Value -> SUM(I2:I...)
+        const totalValueRef = XLSX.utils.encode_cell({
+          r: 1,
+          c: totalColIdx + 2,
+        }); // K2
         const lastRow = stockRows.length + 1;
 
         wsStock[totalValueRef] = {
@@ -385,14 +419,14 @@ export function initReports(state) {
           f: `SUM(I2:I${lastRow})`,
         };
 
-        // Range
         const range = XLSX.utils.decode_range(wsStock["!ref"]);
-        if (range.e.c < totalColIdx) {
-          range.e.c = totalColIdx;
+        if (range.e.c < totalColIdx + 2) {
+          range.e.c = totalColIdx + 2;
           wsStock["!ref"] = XLSX.utils.encode_range(range);
         }
-        if (!wsStock["!cols"][totalColIdx])
-          wsStock["!cols"][totalColIdx] = { wch: 25 };
+        if (!wsStock["!cols"][totalColIdx + 2]) {
+          wsStock["!cols"][totalColIdx + 2] = { wch: 25 };
+        }
       } else {
         const stockData = [["Stocktaking"], ["No inventory data found."]];
         wsStock = XLSX.utils.aoa_to_sheet(stockData);

@@ -65,37 +65,43 @@ async function fetchRatesInternal(from, to, startStr, endStr) {
 
     // NBP API (PLN)
     if (to === "PLN" && from !== "PLN") {
-      // NBP to PLN (USD or CNY -> PLN)
       url = `https://api.nbp.pl/api/exchangerates/rates/a/${from}/${startStr}/${endStr}/?format=json`;
     }
-    // Frankfurter (Cross rates)
+    // Frankfurter (Direct & Cross rates)
     else {
       url = `https://api.frankfurter.app/${startStr}..${endStr}?from=${from}&to=${to}`;
     }
 
     const resp = await fetch(url);
-    if (!resp.ok) {
+    if (resp.ok) {
+      const data = await resp.json();
       // NBP
+      if (data.rates && Array.isArray(data.rates)) {
+        data.rates.forEach((r) => {
+          map[r.effectiveDate] = r.mid;
+        });
+      }
+      // Frankfurter
+      else if (data.rates && !Array.isArray(data.rates)) {
+        for (const [date, rates] of Object.entries(data.rates)) {
+          if (rates[to]) map[date] = rates[to];
+        }
+      }
+    } else {
       if (resp.status !== 404) {
         console.warn(
-          `[Currency] Failed to fetch ${from}->${to} (${startStr} to ${endStr}): Status ${resp.status}`,
+          `[Currency] Failed to fetch ${from}->${to}: Status ${resp.status}`,
         );
       }
-      return {};
     }
 
-    const data = await resp.json();
-
-    // NBP
-    if (data.rates && Array.isArray(data.rates)) {
-      data.rates.forEach((r) => {
-        map[r.effectiveDate] = r.mid;
-      });
-    }
-    // Frankfurter
-    else if (data.rates && !Array.isArray(data.rates)) {
-      for (const [date, rates] of Object.entries(data.rates)) {
-        map[date] = rates[to];
+    if (Object.keys(map).length === 0 && to === "BGN" && from !== "EUR") {
+      log(
+        `[Currency] Direct BGN missing for ${startStr}. Falling back to EUR...`,
+      );
+      const eurMap = await fetchRatesInternal(from, "EUR", startStr, endStr);
+      for (const date in eurMap) {
+        map[date] = eurMap[date] * 1.95583;
       }
     }
   } catch (e) {
