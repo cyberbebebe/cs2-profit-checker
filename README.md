@@ -8,10 +8,10 @@
 - Fetches FULL transaction history on all enabled marketplaces
 - Handles currencies (CNY, EUR) and sale fees automatically
 - Calculates total wallet balance on selected marketplaces. This includes usable, pending and frozen (in bargains)
-- Crafts clean, detailed Profit and Tax-ready reports. These reports support the USD, EUR, and PLN currencies\*
+- Crafts clean, detailed Profit and Tax-ready reports. However, Profit reports only support USD. Tax-ready reports support USD, EUR, and PLN.\*
 - Operates everything locally on your PC. Code of each file is open
 
-_\* The CNY and EUR currency rates are calculated using the Frankfurter API. I cannot guarantee that the tax-ready report conversions are 100% correct._
+> **Note:** The CNY and EUR currency rates are calculated using the Frankfurter API, **should** be same as ECB rates.
 
 ## 🚀 Features
 
@@ -19,10 +19,9 @@ _\* The CNY and EUR currency rates are calculated using the Frankfurter API. I c
 - **Smart Calculations:** Automatically accounts for specific fees of each marketplace to calculate **true** net profit.
 - **Balance Calculator:** Calculates the total wallet balance from all connected marketplaces by pressing "Balance" button.
 - **Profit Reports:** Generates a formatted `.xlsx` file with "Profit" column, carefully calculated Total Profit and auto-filters for sorting by Profit ($), Profit (%), Sell Income or Date.
-- **Verified\* Profit Report:** The extension processes only verified\* transactions for Profit Reports. Tax Reports uses createdAt timestamps.
-- **Tax-like Reports:** Generates a formatted `.xlsx` file suitable for real legal tax processes. The 'Stocktaking' is taken at the current moment and requires manual adjustment for items when a buy transaction was not found.
+- **Tax-ready Reports:** Generates a formatted `.xlsx` file suitable for real legal tax processes. The 'Stocktaking' is taken at the current moment and requires manual adjustment for items when a buy transaction was not found. **Should** fit for your accountant.
 
-_\*Verified transactions indicate successful deals. For recent transactions, the date aligns with the payout time (after the trade-protection period). For older transactions, it aligns with the marketplace success timestamp._
+> **Note:** recently i changed the Profit reports to check sales by `created_at` timestamps/dates according to the Tax-ready reports.
 
 ## 📦 Setup / Installation
 
@@ -35,7 +34,7 @@ _\*Verified transactions indicate successful deals. For recent transactions, the
    - Select the folder where you unzipped the extension.
 4. Pin the extension and click the icon to open the dashboard!
 
-> **Note:** This tool provides a "Tax-like" report structure to assist with accounting, but it does not replace professional tax advice. Contact a specialist for clarification.
+> **Note:** This tool provides a "Tax-ready" report structure to assist with accounting, but it does not replace professional tax advice. Contact a specialist for clarification.
 
 ## ℹ️ Important notes:
 

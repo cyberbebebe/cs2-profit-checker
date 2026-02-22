@@ -23,7 +23,8 @@ export class Buff163Fetcher extends BaseFetcher {
 
   async getBalance() {
     try {
-      const url = "https://buff.163.com/api/asset/get_brief_asset/";
+      const url =
+        "https://buff.163.com/api/asset/get_brief_asset/?with_pending_divide_amount=1";
       const data = await this.fetchWithAuth(url);
 
       if (!data) return { amount: 0, currency: "USD" };
@@ -35,7 +36,7 @@ export class Buff163Fetcher extends BaseFetcher {
 
       total = cny + frozen + pending;
 
-      return { amount: cny, currency: "CNY" };
+      return { amount: total, currency: "CNY" };
     } catch (e) {
       console.error("[Buff163] Balance error:", e);
       return { amount: 0, currency: "USD" };

@@ -32,7 +32,7 @@ export function initReports(state) {
       const endDate = new Date(year, month, 0, 23, 59, 59);
 
       const filtered = matches.filter((m) => {
-        const dateToCheck = m.sell_verified_at || m.sell_created_at;
+        const dateToCheck = m.sell_created_at;
         if (!dateToCheck) return false;
         return dateToCheck >= startDate && dateToCheck <= endDate;
       });
@@ -70,10 +70,10 @@ export function initReports(state) {
           return price * rate;
         };
 
-        const displayBuyDate = m.buy_verified_at || m.buy_created_at;
+        const displayBuyDate = m.buy_created_at;
         const conversionBuyDate = displayBuyDate || new Date();
 
-        const displaySellDate = m.sell_verified_at || m.sell_created_at;
+        const displaySellDate = m.sell_created_at;
         const conversionSellDate = displaySellDate || new Date();
 
         const buyPriceUSD = convertToUSD(
@@ -109,7 +109,7 @@ export function initReports(state) {
           "Sell Income ($)": parseFloat(sellPriceUSD.toFixed(2)),
           "Sell Date": formatDate(displaySellDate),
           "Profit ($)": parseFloat(profitUSD.toFixed(2)),
-          "Profit %": profitPerc, // Форматування відсотків робиться бібліотекою XLSX або залиште як число
+          "Profit %": profitPerc,
         };
       });
 
@@ -311,7 +311,7 @@ export function initReports(state) {
           [`Income (${targetCurrency})`]: parseFloat(prices.target.toFixed(2)),
         };
       });
-      // ... (Total Sales logic) ...
+      // Total Sales
       const totalSellLocal = salesRows.reduce(
         (sum, r) => sum + r[`Income (${targetCurrency})`],
         0,

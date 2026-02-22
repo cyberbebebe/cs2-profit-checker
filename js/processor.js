@@ -1,9 +1,8 @@
 import { generateSignature, log } from "./utils.js";
 
 // Helper to get a comparable date for matching logic
-// Priority: VerifiedAt > CreatedAt ( > Date.now() )
+// CreatedAt > Date.now()
 function getTxDate(tx) {
-  if (tx.verified_at) return tx.verified_at;
   if (tx.created_at) return tx.created_at;
   return new Date(0); // Critical moment with no buy time, should not happen
 }
@@ -44,7 +43,7 @@ export function matchTransactions(sales, buys) {
     let matchIndex = -1;
     let matchType = "none";
 
-    // FIX: Get sale date once
+    // Get sale date once
     const saleDate = getTxDate(sale);
 
     // A: Metadata Match

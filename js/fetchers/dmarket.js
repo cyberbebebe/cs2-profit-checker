@@ -56,11 +56,12 @@ export class DMarketFetcher extends BaseFetcher {
         const price = parseFloat(obj.changes?.[0]?.money?.amount || 0);
         const createdDate = new Date(obj.createdAt * 1000);
         let verifiedDate = null;
-        if (obj.status === "success") {
-          verifiedDate = obj.updatedAt
-            ? new Date(obj.updatedAt * 1000)
-            : createdDate;
+        if (obj.details && obj.details.settlementTime) {
+          verifiedDate = new Date(obj.details.settlementTime * 1000);
+        } else if (obj.status === "success" && obj.updatedAt) {
+          verifiedDate = new Date(obj.updatedAt * 1000);
         }
+
         items.push(
           new Transaction({
             source: "DMarket",
@@ -70,8 +71,8 @@ export class DMarketFetcher extends BaseFetcher {
             item_name: obj.subject,
             price: price,
             currency: "USD",
-            created_at: createdDate, // <--- TAX
-            verified_at: verifiedDate, // <--- PROFIT
+            created_at: createdDate,
+            verified_at: verifiedDate, 
             float_val: obj.details?.extra?.floatValue,
             pattern: obj.details?.extra?.paintSeed,
             phase: obj.details?.extra?.phaseTitle,
