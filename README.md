@@ -2,7 +2,7 @@
 
 ## Supported marketplaces: **CSFloat, DMarket, Skinport, Buff163, BuffMarket, CSMoney Market & Youpin**
 
-## 🔍 Features & What it does?
+## 🔍 Features & what it does
 
 This extension operates entirely locally on your PC. **It does not send any of your data to 3rd-party servers.**
 
