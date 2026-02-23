@@ -1,8 +1,43 @@
 import { matchTransactions, matchInventory } from "../processor.js";
 import { log, formatDate, fitColumns, downloadJSON } from "../utils.js";
-import { getRatesMap, getRateFromMap } from "../currency.js";
+import {
+  getRatesMap,
+  getRateFromMap,
+  getAvailableCurrencies,
+} from "../currency.js";
+
+async function initCurrencyDropdown() {
+  const select = document.getElementById("currency-select");
+  if (!select) return;
+
+  const currencies = await getAvailableCurrencies();
+
+  const topCurrencies = ["USD", "EUR", "BGN"];
+
+  select.innerHTML = "";
+
+  topCurrencies.forEach((code) => {
+    if (currencies[code]) {
+      const opt = document.createElement("option");
+      opt.value = code;
+      opt.textContent = `${code} - ${currencies[code]}`;
+      select.appendChild(opt);
+      delete currencies[code];
+    }
+  });
+
+  const sortedKeys = Object.keys(currencies).sort();
+  sortedKeys.forEach((code) => {
+    const opt = document.createElement("option");
+    opt.value = code;
+    opt.textContent = `${code} - ${currencies[code]}`;
+    select.appendChild(opt);
+  });
+}
 
 export function initReports(state) {
+  initCurrencyDropdown();
+
   const ui = {
     btnProfitXlsx: document.getElementById("btn-profit-xlsx"),
     btnProfitJson: document.getElementById("btn-profit-json"),
@@ -24,12 +59,40 @@ export function initReports(state) {
 
     try {
       const matches = matchTransactions(state.allSales, state.allBuys);
-      const [year, month] = document
-        .getElementById("report-month")
-        .value.split("-");
 
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59);
+      const startVal = document.getElementById("report-start-month").value;
+      const endVal = document.getElementById("report-end-month").value;
+
+      if (!startVal || !endVal) {
+        alert("Please select both Start and End months.");
+        btn.disabled = false;
+        btn.textContent = oldText;
+        return;
+      }
+
+      const [startYear, startMonth] = startVal.split("-");
+      const startDate = new Date(
+        parseInt(startYear),
+        parseInt(startMonth) - 1,
+        1,
+      );
+
+      const [endYear, endMonth] = endVal.split("-");
+      const endDate = new Date(
+        parseInt(endYear),
+        parseInt(endMonth),
+        0,
+        23,
+        59,
+        59,
+      );
+
+      if (startDate > endDate) {
+        alert("Start month cannot be later than End month.");
+        btn.disabled = false;
+        btn.textContent = oldText;
+        return;
+      }
 
       const filtered = matches.filter((m) => {
         const dateToCheck = m.sell_created_at;
@@ -174,7 +237,7 @@ export function initReports(state) {
       ws["!cols"] = cols;
 
       XLSX.utils.book_append_sheet(wb, ws, "Profit Report");
-      XLSX.writeFile(wb, `Profit_Report_${year}-${month}.xlsx`);
+      XLSX.writeFile(wb, `Profit_Report_${startVal}_to_${endVal}.xlsx`);
     } catch (e) {
       console.error(e);
       alert("Error: " + e.message);
@@ -199,15 +262,40 @@ export function initReports(state) {
     btn.textContent = "⏳ Generating...";
 
     try {
-      const [yearStr, monthStr] = document
-        .getElementById("report-month")
-        .value.split("-");
-      const year = parseInt(yearStr);
-      const month = parseInt(monthStr);
+      const startVal = document.getElementById("report-start-month").value;
+      const endVal = document.getElementById("report-end-month").value;
       const targetCurrency = document.getElementById("currency-select").value;
 
-      const reportStartDate = new Date(year, month - 1, 1);
-      const reportEndDate = new Date(year, month, 0, 23, 59, 59);
+      if (!startVal || !endVal) {
+        alert("Please select both Start and End months.");
+        btn.disabled = false;
+        btn.textContent = oldText;
+        return;
+      }
+
+      const [startYearStr, startMonthStr] = startVal.split("-");
+      const reportStartDate = new Date(
+        parseInt(startYearStr),
+        parseInt(startMonthStr) - 1,
+        1,
+      );
+
+      const [endYearStr, endMonthStr] = endVal.split("-");
+      const reportEndDate = new Date(
+        parseInt(endYearStr),
+        parseInt(endMonthStr),
+        0,
+        23,
+        59,
+        59,
+      );
+
+      if (reportStartDate > reportEndDate) {
+        alert("Start month cannot be later than End month.");
+        btn.disabled = false;
+        btn.textContent = oldText;
+        return;
+      }
 
       let ratesStart = new Date(reportStartDate);
 
@@ -252,7 +340,7 @@ export function initReports(state) {
       const getPrices = (item) => {
         const cur = item.currency || "USD";
         const dateToCheck = item.created_at || new Date();
-        
+
         // Zloty fix, previous day for currency rates
         if (targetCurrency === "PLN") {
           dateToCheck.setDate(dateToCheck.getDate() - 1);
@@ -436,7 +524,7 @@ export function initReports(state) {
 
       XLSX.writeFile(
         wb,
-        `Tax_Report_${targetCurrency}_${yearStr}-${monthStr}.xlsx`,
+        `Tax_Report_${targetCurrency}_${startVal}_to_${endVal}.xlsx`,
       );
       log("Tax Report Generated.");
     } catch (e) {

@@ -3,7 +3,7 @@ import { log } from "./utils.js";
 const ratesCache = {};
 
 export async function getRatesMap(from, to, startDateStr, endDateStr) {
-  if (from === to) return {}; // Базова оптимізація
+  if (from === to) return {};
 
   const cacheKey = `${from}_${to}_${startDateStr}_${endDateStr}`;
   if (ratesCache[cacheKey]) return ratesCache[cacheKey];
@@ -129,4 +129,32 @@ export function getRateFromMap(dateObj, map) {
   }
 
   return 0;
+}
+
+export async function getAvailableCurrencies() {
+  try {
+    const resp = await fetch("https://api.frankfurter.app/currencies");
+    if (!resp.ok) throw new Error("Failed to fetch currencies list");
+
+    const data = await resp.json();
+
+    data["USD"] = "US Dollar";
+    data["EUR"] = "Euro";
+    data["PLN"] = "Polish Zloty";
+    data["BGN"] = "Bulgarian Lev";
+
+    return data;
+  } catch (e) {
+    console.error(
+      "[Currency] Could not load dynamic currencies, using defaults.",
+      e,
+    );
+    // Якщо API лежить, повертаємо наш "залізний" мінімум
+    return {
+      USD: "US Dollar",
+      EUR: "Euro",
+      PLN: "Polish Zloty",
+      BGN: "Bulgarian Lev",
+    };
+  }
 }

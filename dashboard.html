@@ -167,16 +167,38 @@
           <h2>Reports Generation</h2>
         </div>
 
-        <div class="settings-grid">
-          <div class="setting-item">
-            <label>Report Month</label>
-            <input type="month" id="report-month" value="2026-02" />
+        <div
+          class="settings-grid"
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            align-items: end;
+            margin-bottom: 20px;
+          "
+        >
+          <div
+            class="input-group date-range-group"
+            style="display: flex; gap: 10px; width: 100%;"
+          >
+            <div style="display: flex; flex-direction: column; gap: 5px; flex: 1;">
+              <label>From Month</label>
+              <input type="month" id="report-start-month" value="2025-01" style="width: 100%; box-sizing: border-box;" />
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px; flex: 1;">
+              <label>To Month</label>
+              <input type="month" id="report-end-month" value="2026-02" style="width: 100%; box-sizing: border-box;" />
+            </div>
           </div>
-          <div class="setting-item">
+
+          <div
+            class="setting-item"
+            style="display: flex; flex-direction: column; gap: 5px; width: 100%;"
+          >
             <label>Currency (Tax Report)</label>
-            <select id="currency-select">
+            <select id="currency-select" style="width: 100%; box-sizing: border-box;">
               <option value="USD">USD - US Dollar</option>
-              <option value="EUR">EUR - Euro</option> 
+              <option value="EUR">EUR - Euro</option>
               <option value="PLN">PLN - Polish Zloty</option>
               <option value="BGN">BGN - Bulgarian Lev</option>
             </select>

@@ -1,58 +1,46 @@
-# Automated Profit & Balance Calculator for CS2 Traders
+# Automated Profit & Tax Manager for CS2 Traders
 
-## Supported Marketplaces: **CSFloat, DMarket, Skinport, Buff163, BuffMarket, CSMoney Market & Youpin**
+## Supported marketplaces: **CSFloat, DMarket, Skinport, Buff163, BuffMarket, CSMoney Market & Youpin**
 
-## 🔍 What it does?
+## 🔍 Features & What it does?
+This extension operates entirely locally on your PC. **It does not send any of your data to 3rd-party servers.**
+- 🔄 **Cross-Marketplace Matching:** Automatically checks your login status and fetches your FULL transaction history across all enabled marketplaces. It matches purchases and sales across different platforms using crafted item signatures (based on Float, Pattern, and Item name).
+- 💰 **Smart Balance & Fee Calculations:** Automatically accounts for the specific selling fees of each marketplace to calculate your **true** net profit. It also calculates your total wallet balance across all connected platforms, including usable, pending, and frozen funds (e.g., in active bargains).
+- 📈 **Profit Reports (Standard):** Generates a clean, formatted .xlsx file detailing your trades. Includes a "Profit" column, calculated percentages, and auto-filters for easy sorting by Profit ($), Profit (%), Sell Income, or Date. (Note: Profit reports support USD only. Rows where profit is calculated as 0 require manual review).
+- 🏛️ **Tax-Ready Reports (Accounting):** Generates a specialized .xlsx file structured for real legal tax processes. It supports over 20+ fiat currencies (USD, EUR, PLN, etc.) and includes a current-moment 'Stocktaking' sheet (requires manual adjustment for items where a buy transaction wasn't found)
 
-- Checks if you're logged in on selected marketplaces
-- Fetches FULL transaction history on all enabled marketplaces
-- Handles currencies (CNY, EUR) and sale fees automatically
-- Calculates total wallet balance on selected marketplaces. This includes usable, pending and frozen (in bargains)
-- Crafts clean, detailed Profit and Tax-ready reports. However, Profit reports only support USD. Tax-ready reports support USD, EUR, and PLN.\*
-- Operates everything locally on your PC. Code of each file is open
-
-> **Note:** The CNY and EUR currency rates are calculated using the Frankfurter API, **should** be same as ECB rates.
-
-## 🚀 Features
-
-- **Cross-Marketplace Matching:** Matches purchases and sales across different CS2 skin marketplaces using intelligent item signatures (based on Float, Pattern, and Item name).
-- **Smart Calculations:** Automatically accounts for specific fees of each marketplace to calculate **true** net profit.
-- **Balance Calculator:** Calculates the total wallet balance from all connected marketplaces by pressing "Balance" button.
-- **Profit Reports:** Generates a formatted `.xlsx` file with "Profit" column, carefully calculated Total Profit and auto-filters for sorting by Profit ($), Profit (%), Sell Income or Date.
-- **Tax-ready Reports:** Generates a formatted `.xlsx` file suitable for real legal tax processes. The 'Stocktaking' is taken at the current moment and requires manual adjustment for items when a buy transaction was not found. **Should** fit for your accountant.
-
-> **Note:** recently i changed the Profit reports to check sales by `created_at` timestamps/dates according to the Tax-ready reports.
+> **Important Data Notes:**
+> Both Profit and Tax-ready reports use `created_at` timestamps (the exact moment of the trade), rather than post-pending/settlement dates, strictly following standard accounting principles
+> Currency exchange rates are dynamically fetched using the Frankfurter API (and NBP for PLN) and perfectly align with official ECB rates
 
 ## 📦 Setup / Installation
 
 1. Download the latest extension `*.zip` from the **[Releases page](https://github.com/cyberbebebe/cs2-profit-checker/releases)**.
 2. Unzip the archive to a folder on your computer.
-3. Open your browser (Chrome, Brave, Edge, Opera, etc.):
+3. Open Chromium-based browser (Chrome, Brave, Edge, Opera, etc.):
    - Go to `chrome://extensions/` (or usually "Menu -> Extensions -> Manage Extensions").
    - Enable **Developer mode** (toggle in the top right corner).
    - Click **Load unpacked**.
    - Select the folder where you unzipped the extension.
 4. Pin the extension and click the icon to open the dashboard!
 
-> **Note:** This tool provides a "Tax-ready" report structure to assist with accounting, but it does not replace professional tax advice. Contact a specialist for clarification.
+> **Disclaimer:** This tool provides a "Tax-ready" report structure to assist you with tracking and accounting, but it does not replace professional tax advice. Always consult a certified accountant in your jurisdiction for final tax filings.
 
 ## ℹ️ Important notes:
 
-1. The Steam Community Market history will not be fetched. There are a few reasons:
-   - It have 500 transactions per request limit and you can't use filters to request only cs2 transactions
-   - Requires to inspect every cs2(cs:go) item you sold or bought. This will lead to spam inspect apis of some services like csfloat or cs2trader.
-   - You and I mostly buy and sell items on 3rd-party marketplaces.
+1. Steam Community Market history is **not** fetched. There are a few reasons for this:
+   - Steam has a strict limit of 500 transactions per request, and you cannot use filters to request only CS2 transactions
+   - It would require inspecting every single CS:GO/CS2 item you bought or sold, which would inevitably spam the Inspect APIs of services like CSFloat or CS2Trader
+   - Most high-volume trading occurs on 3rd-party marketplaces anyway. I consider this an acceptable omission
 
-   I think this is acceptable omission.
+2. **Long Fetching Times:** The extension fetches your FULL transaction history (dating back to 2014) from each selected marketplace. The slowest platforms to fetch are
+   - **Buff163** - 200 transactions per request (each taking ~3 seconds)
+   - **Youpin** - 20 transactions per request
+   - **CSMoney Market** - 100 transactions per request
 
-2. Long fetching time. It fetches FULL transaction history from 2014 at each marketplace you set. The main 3 marketplaces that fetches really long are:
-   - Buff163 - 200 transactions per request (each take ~3 seconds)
-   - Youpin - 20 transactions per request
-   - CSMoney Market - 100 transactions per request
+3. **DMarket limitations:** DMarket API does not provide an AssetID or metadata (float, pattern, phase) for transactions made prior to September 2025.
 
-3. DMarket have no AssetID and "metadata" (float, pattern, phase) in transactions made before September 2025.
-
-4. Skinport sales handling is a guess. I can't sell items here, so i can't check what fields for clean balance or fees skinport have for "Sale" transactions.
+4. **Skinport Estimation:** Skinport sales handling is currently an estimation. Since I cannot sell items there myself, I cannot verify the exact API fields Skinport uses for clean balance or fees on "Sale" transactions.
 
 ## Created for the CS2 trading community and enthusiasts by a CS2 trader
 
