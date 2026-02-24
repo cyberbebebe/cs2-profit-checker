@@ -11,7 +11,7 @@ This extension operates entirely locally on your PC. **It does not send any of y
 - 📈 **Profit Reports (Standard):** Generates a clean, formatted .xlsx file detailing your trades. Includes a "Profit" column, calculated percentages, and auto-filters for easy sorting by Profit ($), Profit (%), Sell Income, or Date. (Note: Profit reports support USD only. Rows where profit is calculated as 0 require manual review).
 - 🏛️ **pre-Tax Reports (Accounting):** Generates a specialized .xlsx file structured for real legal tax processes. It supports over 20+ fiat currencies (USD, EUR, PLN, etc.) and includes a current-moment 'Stocktaking' sheet (requires manual adjustment for items where a buy transaction wasn't found)
 
-> **Important Data Notes:** Both Profit and Tax-ready reports use `created_at` timestamps (the exact moment of the trade), rather than post-pending/settlement dates, strictly following standard accounting principles. Currency exchange rates are dynamically fetched using the Frankfurter API (and NBP for PLN) and perfectly align with official ECB rates.
+> **Important Data Notes:** Both Profit and pre-Tax reports use `created_at` timestamps (the exact moment of the trade), rather than post-pending/settlement dates, strictly following standard accounting principles. Currency exchange rates are dynamically fetched using the Frankfurter API (and NBP for PLN) and perfectly align with official ECB rates.
 
 ## 📦 Setup / Installation
 
