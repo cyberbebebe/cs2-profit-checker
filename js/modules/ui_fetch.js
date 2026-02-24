@@ -41,41 +41,42 @@ export function initFetch(state) {
 
     // 3. Promises
     const promises = enabledFetchers.map(async (f) => {
-      try {
-        // SALES
-        progressText.textContent = `Fetching ${f.name} Sales...`;
-        log(`${f.name}: Fetching Sales...`);
-        const s = await f.getSales();
-        if (s) state.allSales.push(...s);
-        updateProgress(`${f.name} Sales`);
+      progressText.textContent = `Fetching ${f.name} data...`;
+      log(`${f.name}: Fetching Sales and Buys concurrently...`);
 
-        // BUYS
-        await new Promise((r) => setTimeout(r, 500));
+      const fetchTask = async (taskName, fetchFn, targetArray) => {
+        try {
+          const data = await fetchFn();
+          if (data) targetArray.push(...data);
+        } catch (e) {
+          log(`${f.name} ${taskName} Error: ${e.message}`);
+        } finally {
+          updateProgress(`${f.name} ${taskName}`);
+        }
+      };
 
-        progressText.textContent = `Fetching ${f.name} Buys...`;
-        log(`${f.name}: Fetching Buys...`);
-        const b = await f.getBuys();
-        if (b) state.allBuys.push(...b);
-        updateProgress(`${f.name} Buys`);
-      } catch (e) {
-        log(`${f.name}: Error - ${e.message}`);
-        completedSteps += 2 - (completedSteps % 2); // Hack to complete this fetcher's steps
-        const pct = Math.round((completedSteps / totalSteps) * 100);
-        progressFill.style.width = `${pct}%`;
-      }
+      await Promise.all([
+        fetchTask("Sales", () => f.getSales(), state.allSales),
+        fetchTask("Buys", () => f.getBuys(), state.allBuys),
+      ]);
 
       if (f.name === "Steam") {
         progressText.textContent = `Fetching Steam Inventory...`;
-        const items = await f.getInventory();
-        if (items && items.length > 0) {
-          state.inventory.push(...items);
+        try {
+          const items = await f.getInventory();
+          if (items && items.length > 0) state.inventory.push(...items);
+        } catch (e) {
+          log(`Steam Inv Error: ${e.message}`);
         }
       }
+
       if (f.name === "DMarket") {
         progressText.textContent = `Fetching DMarket Inventory...`;
-        const items = await f.getInventory();
-        if (items && items.length > 0) {
-          state.inventory.push(...items);
+        try {
+          const items = await f.getInventory();
+          if (items && items.length > 0) state.inventory.push(...items);
+        } catch (e) {
+          log(`DMarket Inv Error: ${e.message}`);
         }
       }
     });
@@ -106,7 +107,7 @@ export function initFetch(state) {
     if (from === to) return 1;
     try {
       const res = await fetch(
-        `https://api.frankfurter.app/latest?from=${from}&to=${to}`,
+        `https://api.frankfurter.dev/v1/latest?base=${from}&symbols=${to}`,
       );
       const data = await res.json();
       return data.rates[to] || 0;

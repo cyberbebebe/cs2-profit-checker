@@ -240,7 +240,7 @@ export class YoupinFetcher extends BaseFetcher {
 
         if (orderList.length < pageSize) break;
         page++;
-        await this.sleep(1000);
+        await this.sleep(500);
       } catch (e) {
         console.error("[Youpin] Error:", e);
         break;

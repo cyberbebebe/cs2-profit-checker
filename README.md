@@ -8,8 +8,8 @@ This extension operates entirely locally on your PC. **It does not send any of y
 
 - 🔄 **Cross-Marketplace Matching:** Automatically checks your login status and fetches your FULL transaction history across all enabled marketplaces. It matches purchases and sales across different platforms using crafted item signatures (based on Float, Pattern, and Item name).
 - 💰 **Smart Balance & Fee Calculations:** Automatically accounts for the specific selling fees of each marketplace to calculate your **true** net profit. It also calculates your total wallet balance across all connected platforms, including usable, pending, and frozen funds (e.g., in active bargains).
-- 📈 **Profit Reports (Standard):** Generates a clean, formatted .xlsx file detailing your trades. Includes a "Profit" column, calculated percentages, and auto-filters for easy sorting by Profit ($), Profit (%), Sell Income, or Date. (Note: Profit reports support USD only. Rows where profit is calculated as 0 require manual review).
-- 🏛️ **Tax-Ready Reports (Accounting):** Generates a specialized .xlsx file structured for real legal tax processes. It supports over 20+ fiat currencies (USD, EUR, PLN, etc.) and includes a current-moment 'Stocktaking' sheet (requires manual adjustment for items where a buy transaction wasn't found)
+- 📈 **Profit Reports (Standard):** Generates a clean, formatted `.xlsx` file detailing your trades. Includes a "Profit" column, calculated percentages, and auto-filters for easy sorting by Profit ($), Profit (%), Sell Income, or Date. (Note: Profit reports support USD only. Rows where profit is calculated as 0 require manual review).
+- 🏛️ **Tax-Ready Reports (Accounting):** Generates a specialized `.xlsx` file structured for real legal tax processes. It supports over 20+ fiat currencies (USD, EUR, PLN, etc.) and includes a current-moment 'Stocktaking' sheet (requires manual adjustment for items where a buy transaction wasn't found)
 
 > **Important Data Notes:** Both Profit and Tax-ready reports use `created_at` timestamps (the exact moment of the trade), rather than post-pending/settlement dates, strictly following standard accounting principles. Currency exchange rates are dynamically fetched using the Frankfurter API (and NBP for PLN) and perfectly align with official ECB rates.
 
@@ -24,7 +24,7 @@ This extension operates entirely locally on your PC. **It does not send any of y
    - Select the folder where you unzipped the extension.
 4. Pin the extension and click the icon to open the dashboard!
 
-> **Disclaimer:** This tool provides a "Tax-ready" report structure to assist you with tracking and accounting, but it does not replace professional tax advice. Always consult a certified accountant in your jurisdiction for final tax filings.
+> **Disclaimer:** This tool provides a "preTax" report structure to assist you with tracking and accounting, but it does not replace professional tax advice. Always consult a certified accountant in your jurisdiction for final tax filings.
 
 ## ℹ️ Important notes:
 

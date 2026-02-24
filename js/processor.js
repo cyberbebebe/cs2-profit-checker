@@ -169,13 +169,13 @@ export function matchInventory(inventoryItems, allBuys) {
   for (let k in buyMap) sortByDate(buyMap[k]);
   for (let k in buyAssetMap) sortByDate(buyAssetMap[k]);
 
-  // 2. Матчимо інвентар
+  // 2. Inventory matching
   return inventoryItems.map((item) => {
     let match = null;
 
     // А: Asset ID matching (DMarket)
     if (item.asset_id && buyAssetMap[item.asset_id]) {
-      match = buyAssetMap[item.asset_id][0]; // Беремо найсвіжішу
+      match = buyAssetMap[item.asset_id][0]; // Newest
     }
 
     // B: Signatures (Float + Pattern)

@@ -139,7 +139,7 @@ export class Buff163Fetcher extends BaseFetcher {
       }
 
       page++;
-      await this.sleep(500);
+      await this.sleep(250);
     }
 
     return allTxs;

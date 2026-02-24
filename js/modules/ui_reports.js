@@ -1,9 +1,9 @@
 import { matchTransactions, matchInventory } from "../processor.js";
 import { log, formatDate, fitColumns, downloadJSON } from "../utils.js";
 import {
-  getRatesMap,
   getRateFromMap,
   getAvailableCurrencies,
+  getBulkRatesMap,
 } from "../currency.js";
 
 async function initCurrencyDropdown() {
@@ -110,10 +110,14 @@ export function initReports(state) {
       const startStr = "2014-01-01";
       const endStr = endDate.toISOString().split("T")[0];
 
-      const [cnyMap, eurMap] = await Promise.all([
-        getRatesMap("CNY", "USD", startStr, endStr),
-        getRatesMap("EUR", "USD", startStr, endStr),
-      ]);
+      const bulkMaps = await getBulkRatesMap(
+        ["CNY", "EUR"],
+        "USD",
+        startStr,
+        endStr,
+      );
+      const cnyMap = bulkMaps["CNY"] || {};
+      const eurMap = bulkMaps["EUR"] || {};
 
       const ws_data = filtered.map((m) => {
         const convertToUSD = (price, currency, date) => {
@@ -321,19 +325,13 @@ export function initReports(state) {
       state.allBuys.forEach((b) => usedCurrencies.add(b.currency || "USD"));
       state.allSales.forEach((s) => usedCurrencies.add(s.currency || "USD"));
 
-      const targetMaps = {};
-
-      const fetchPromises = [];
-      for (const cur of usedCurrencies) {
-        if (cur !== targetCurrency) {
-          fetchPromises.push(
-            getRatesMap(cur, targetCurrency, startStr, endStr).then((map) => {
-              targetMaps[cur] = map;
-            }),
-          );
-        }
-      }
-      await Promise.all(fetchPromises);
+      const cursArray = Array.from(usedCurrencies);
+      const targetMaps = await getBulkRatesMap(
+        cursArray,
+        targetCurrency,
+        startStr,
+        endStr,
+      );
 
       const wb = XLSX.utils.book_new();
 
