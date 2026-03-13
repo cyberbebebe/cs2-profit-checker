@@ -15,9 +15,8 @@ function extractPhase(name) {
   else if (name.includes("Emerald")) phase = "Emerald";
 
   if (phase) {
-    // Remove phase from name (e.g. "Karambit | Doppler (Factory New) Phase 1" -> "Karambit | Doppler (Factory New)")
-    // Usually phase is at the end or in brackets, simple replace might leave double spaces
-    const cleanName = name.replace(phase, "").trim();
+    const cleanName = name.replace(phase, "").replace(/\s+/g, " ").trim();
+
     return { name: cleanName, phase };
   }
   return { name, phase: "" };
