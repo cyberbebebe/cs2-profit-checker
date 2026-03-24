@@ -2,6 +2,7 @@ import { DMarketFetcher } from "./fetchers/dmarket.js";
 import { CSFloatFetcher } from "./fetchers/csfloat.js";
 import { BuffMarketFetcher } from "./fetchers/buffmarket.js";
 import { CSMoneyFetcher } from "./fetchers/csmoney.js";
+import { CSMoneyBotFetcher } from "./fetchers/csmoneybot.js";
 import { YoupinFetcher } from "./fetchers/youpin.js";
 import { SkinportFetcher } from "./fetchers/skinport.js";
 import { Buff163Fetcher } from "./fetchers/buff163.js";
@@ -11,6 +12,7 @@ import { initToggles } from "./modules/ui_toggles.js";
 import { initSessionCheck } from "./modules/ui_sessions.js";
 import { initFetch } from "./modules/ui_fetch.js";
 import { initReports } from "./modules/ui_reports.js";
+import { initTable } from "./modules/ui_table.js";
 
 const state = {
   allSales: [],
@@ -21,6 +23,7 @@ const state = {
     new CSFloatFetcher(),
     new BuffMarketFetcher(),
     new CSMoneyFetcher(),
+    new CSMoneyBotFetcher(),
     new SkinportFetcher(),
     new Buff163Fetcher(),
     new SteamFetcher(),
@@ -34,4 +37,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initSessionCheck(state);
   initFetch(state);
   initReports(state);
+  initTable(state);
 });

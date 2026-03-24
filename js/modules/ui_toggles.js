@@ -11,14 +11,11 @@ export function initToggles(fetchers) {
       const isEnabled = savedState === null ? true : savedState === "true";
 
       checkbox.checked = isEnabled;
-      const statusDiv = card.querySelector(".card-status");
+      const statusDot = card.querySelector(".status-dot");
 
       if (!isEnabled) {
-        card.classList.add("disabled-card");
-        if (statusDiv) {
-          statusDiv.textContent = "Disabled";
-          statusDiv.className = "card-status status-unknown";
-        }
+        card.classList.add("inactive");
+        if (statusDot) statusDot.className = "status-dot status-unknown";
       }
 
       checkbox.addEventListener("change", (e) => {
@@ -26,17 +23,11 @@ export function initToggles(fetchers) {
         localStorage.setItem(`enable_${f.name}`, checked);
 
         if (checked) {
-          card.classList.remove("disabled-card");
-          if (statusDiv) {
-            statusDiv.textContent = "Unknown";
-            statusDiv.className = "card-status status-unknown";
-          }
+          card.classList.remove("inactive");
+          if (statusDot) statusDot.className = "status-dot status-unknown";
         } else {
-          card.classList.add("disabled-card");
-          if (statusDiv) {
-            statusDiv.textContent = "Disabled";
-            statusDiv.className = "card-status status-unknown";
-          }
+          card.classList.add("inactive");
+          if (statusDot) statusDot.className = "status-dot status-unknown";
         }
       });
     }

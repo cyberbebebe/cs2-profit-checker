@@ -2,226 +2,223 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>CS2 Trade Manager</title>
+    <title>CS2 Profit Checker</title>
+    <!-- Modern Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css" />
     <script src="lib/xlsx.mini.min.js"></script>
   </head>
   <body>
-    <div class="container">
-      <header class="main-header">
-        <h1>CS2 Trading Profit Checker & Tax Reports</h1>
-        <a
-          href="https://github.com/cyberbebebe/"
-          target="_blank"
-          class="github-link"
-        >
-          by cyberbebebe <span>↗</span>
-        </a>
-      </header>
+    <!-- Abstract Glows -->
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
 
-      <section class="panel" id="panel-sessions">
-        <div class="panel-header">
-          <h2>Marketplaces Sessions</h2>
-          <div class="header-actions">
-            <button id="btn-check-sessions" class="secondary-btn">
-              ↻ Check
-            </button>
-          </div>
-        </div>
-        <div class="sessions-grid">
-          <div class="session-card" id="card-dmarket">
-            <div class="card-icon">🧩</div>
-            <div class="card-info">
-              <div class="card-name">DMarket</div>
-              <div class="card-status status-unknown">Unknown</div>
-            </div>
-            <div class="toggle-switch">
-              <input type="checkbox" id="toggle-dmarket" checked />
-              <label for="toggle-dmarket" class="slider"></label>
-            </div>
-          </div>
+    <div class="app-layout">
+      
+      <!-- LEFT SIDEBAR -->
+      <aside class="sidebar glass-panel">
+        <header class="main-header">
+          <h1>CS2 Profit Checker</h1>
+          <a href="https://github.com/cyberbebebe/" target="_blank" class="github-link">by cyberbebebe <span>↗</span></a>
+        </header>
 
-          <div class="session-card" id="card-csfloat">
-            <div class="card-icon">📊</div>
-            <div class="card-info">
-              <div class="card-name">CSFloat</div>
-              <div class="card-status status-unknown">Unknown</div>
-            </div>
-            <div class="toggle-switch">
-              <input type="checkbox" id="toggle-csfloat" checked />
-              <label for="toggle-csfloat" class="slider"></label>
-            </div>
-          </div>
+        <hr class="divider" />
 
-          <div class="session-card" id="card-buffmarket">
-            <div class="card-icon">📦</div>
-            <div class="card-info">
-              <div class="card-name">BuffMarket</div>
-              <div class="card-status status-unknown">Unknown</div>
-            </div>
-            <div class="toggle-switch">
-              <input type="checkbox" id="toggle-buffmarket" checked />
-              <label for="toggle-buffmarket" class="slider"></label>
-            </div>
+        <!-- Marketplaces -->
+        <div class="sidebar-section">
+          <div class="section-header">
+             <h2>P2P Marketplaces</h2>
+             <button id="btn-check-sessions" class="icon-btn" title="Check Sessions" style="display: flex; align-items: center; gap: 6px;"><span class="refresh-icon">↻</span><span style="font-size: 14px;">Check</span></button>
+          </div>
+          <div class="sessions-grid">
+             <label class="session-pill" id="card-csfloat" title="CSFloat">
+                <input type="checkbox" id="toggle-csfloat" checked class="hidden-check"/>
+                <span class="status-dot status-unknown"></span>
+                <span class="pill-name">CSFloat</span>
+             </label>
+
+             <label class="session-pill" id="card-buffmarket" title="BuffMarket">
+                <input type="checkbox" id="toggle-buffmarket" checked class="hidden-check"/>
+                <span class="status-dot status-unknown"></span>
+                <span class="pill-name">BuffMarket</span>
+             </label>
+
+             <label class="session-pill" id="card-csmoney" title="CSMoney">
+                <input type="checkbox" id="toggle-csmoney" checked class="hidden-check"/>
+                <span class="status-dot status-unknown"></span>
+                <span class="pill-name">CSMoney</span>
+             </label>
+
+             <label class="session-pill" id="card-buff163" title="Buff163">
+                <input type="checkbox" id="toggle-buff163" checked class="hidden-check"/>
+                <span class="status-dot status-unknown"></span>
+                <span class="pill-name">Buff163</span>
+             </label>
+
+             <label class="session-pill" id="card-youpin" title="Youpin">
+                <input type="checkbox" id="toggle-youpin" checked class="hidden-check"/>
+                <span class="status-dot status-unknown"></span>
+                <span class="pill-name">Youpin</span>
+             </label>
           </div>
 
-          <div class="session-card" id="card-csmoney">
-            <div class="card-icon">🎀</div>
-            <div class="card-info">
-              <div class="card-name">CSMoney</div>
-              <div class="card-status status-unknown">Unknown</div>
-            </div>
-            <div class="toggle-switch">
-              <input type="checkbox" id="toggle-csmoney" checked />
-              <label for="toggle-csmoney" class="slider"></label>
-            </div>
+          <div class="section-header" style="margin-top: 15px;">
+             <h2>Bot Marketplaces</h2>
           </div>
+          <div class="sessions-grid">
+             <label class="session-pill" id="card-dmarket" title="DMarket">
+                <input type="checkbox" id="toggle-dmarket" checked class="hidden-check"/>
+                <span class="status-dot status-unknown"></span>
+                <span class="pill-name">DMarket</span>
+             </label>
 
-          <div class="session-card" id="card-buff163">
-            <div class="card-icon">♠️</div>
-            <div class="card-info">
-              <div class="card-name">Buff163</div>
-              <div class="card-status status-unknown">Unknown</div>
-            </div>
-            <div class="toggle-switch">
-              <input type="checkbox" id="toggle-buff163" checked />
-              <label for="toggle-buff163" class="slider"></label>
-            </div>
+             <label class="session-pill" id="card-csmoneybot" title="CSMoneyBot">
+                <input type="checkbox" id="toggle-csmoneybot" checked class="hidden-check"/>
+                <span class="status-dot status-unknown"></span>
+                <span class="pill-name">CSMoneyBot</span>
+             </label>
+
+             <label class="session-pill" id="card-skinport" title="Skinport">
+                <input type="checkbox" id="toggle-skinport" checked class="hidden-check"/>
+                <span class="status-dot status-unknown"></span>
+                <span class="pill-name">Skinport</span>
+             </label>
+
+             <label class="session-pill" id="card-steam" title="Steam">
+                <input type="checkbox" id="toggle-steam" checked class="hidden-check"/>
+                <span class="status-dot status-unknown"></span>
+                <span class="pill-name">Steam</span>
+             </label>
           </div>
-
-          <div class="session-card" id="card-youpin">
-            <div class="card-icon">🏷️</div>
-            <div class="card-info">
-              <div class="card-name">Youpin*</div>
-              <div class="card-status status-unknown">Unknown</div>
-            </div>
-            <div class="toggle-switch">
-              <input type="checkbox" id="toggle-youpin" checked />
-              <label for="toggle-youpin" class="slider"></label>
-            </div>
-          </div>
-
-          <div class="session-card" id="card-skinport">
-            <div class="card-icon">🌊</div>
-            <div class="card-info">
-              <div class="card-name">Skinport</div>
-              <div class="card-status status-unknown">Unknown</div>
-            </div>
-            <div class="toggle-switch">
-              <input type="checkbox" id="toggle-skinport" checked />
-              <label for="toggle-skinport" class="slider"></label>
-            </div>
-          </div>
-
-          <div class="session-card" id="card-steam">
-            <div class="card-icon">⭐</div>
-            <div class="card-info">
-              <div class="card-name">Steam</div>
-              <div class="card-status status-unknown">Unknown</div>
-            </div>
-            <div class="toggle-switch">
-              <input type="checkbox" id="toggle-steam" checked />
-              <label for="toggle-steam" class="slider"></label>
-            </div>
-          </div>
-        </div>
-        <div class="session-note">
-          *Note: Youpin's session fetching will open a tab and close it
-          automatically to retrieve session tokens.
-        </div>
-      </section>
-
-      <section class="panel" id="panel-data">
-        <div class="panel-header">
-          <h2>Data Collection</h2>
-          <div
-            class="header-actions"
-            style="display: flex; align-items: center; gap: 15px"
-          >
-            <span
-              id="total-balance-display"
-              style="font-weight: 600; color: #00c853; font-size: 16px"
-            ></span>
-            <button id="btn-get-balance" class="secondary-btn" disabled>
-              📌 Balance
-            </button>
+          <div class="sidebar-balance" style="margin-top: 15px; display: flex; gap: 10px;">
+            <button id="btn-get-balance" class="btn-ghost" style="flex: 1;" disabled>💳 Total wallet</button>
+            <div id="total-balance-display" style="flex: 1; text-align: center; display: flex; align-items: center; justify-content: center;">$ _____</div>
           </div>
         </div>
 
-        <div class="fetch-controls">
-          <button id="btn-fetch-all" class="primary-btn">
-            <span>⬇ Fetch Data</span>
-          </button>
+        <hr class="divider" />
 
-          <div class="progress-container">
-            <div class="progress-bar-fill" id="progress-fill"></div>
-            <div class="progress-text" id="progress-text">Ready to fetch</div>
+        <!-- Filters & Data -->
+        <div class="sidebar-section">
+          <h2>Data Engine</h2>
+          <div class="control-box">
+             <label>Period Start</label>
+             <input type="month" id="report-start-month" value="2025-01" class="glass-input full-width"/>
+          </div>
+          <div class="control-box">
+             <label>Period End</label>
+             <input type="month" id="report-end-month" value="2026-02" class="glass-input full-width"/>
+          </div>
+          <div class="control-box toggle-row">
+             <label for="include-buys-checkbox" class="modern-checkbox-wrap">
+               <input type="checkbox" id="include-buys-checkbox" checked />
+               <div class="checkbox-visual"></div>
+               <span class="checkbox-label">Show Unsold Items</span>
+             </label>
+          </div>
+          
+          <button id="btn-fetch-all" class="btn-primary full-width action-btn">⚡ Sync Market Data</button>
+          
+          <div class="progress-wrap sidebar-progress">
+             <div class="progress-bar-glass"><div id="progress-fill"></div></div>
+             <div id="progress-text">Awaiting Synchronization...</div>
           </div>
         </div>
+      </aside>
 
-        <div class="mini-logs" id="logs-area"></div>
-      </section>
-
-      <section class="panel disabled" id="panel-reports">
-        <div class="panel-header">
-          <h2>Reports Generation</h2>
-        </div>
-
-        <div
-          class="settings-grid"
-          style="
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            align-items: end;
-            margin-bottom: 20px;
-          "
-        >
-          <div
-            class="input-group date-range-group"
-            style="display: flex; gap: 10px; width: 100%;"
-          >
-            <div style="display: flex; flex-direction: column; gap: 5px; flex: 1;">
-              <label>From Month</label>
-              <input type="month" id="report-start-month" value="2025-01" style="width: 100%; box-sizing: border-box;" />
+      <!-- MAIN CONTENT -->
+      <main class="main-content">
+        <!-- Dashboard Table -->
+        <section class="glass-panel main-table-panel" id="panel-reports">
+          <div class="table-header-row">
+            <div class="table-title">
+               <h2>Transaction Ledger</h2>
+               <span id="ui-total-profit" class="profit-badge">$0.00</span>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 5px; flex: 1;">
-              <label>To Month</label>
-              <input type="month" id="report-end-month" value="2026-02" style="width: 100%; box-sizing: border-box;" />
-            </div>
-          </div>
-
-          <div
-            class="setting-item"
-            style="display: flex; flex-direction: column; gap: 5px; width: 100%;"
-          >
-            <label>Currency (Tax Report)</label>
-            <select id="currency-select" style="width: 100%; box-sizing: border-box;">
-              <option value="USD">USD - US Dollar</option>
-              <option value="EUR">EUR - Euro</option>
-              <option value="PLN">PLN - Polish Zloty</option>
-              <option value="BGN">BGN - Bulgarian Lev</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="report-buttons-container">
-          <div class="report-group">
-            <h3>Profit Report (Standard)</h3>
-            <div class="btn-group">
-              <button id="btn-profit-json">JSON</button>
-              <button id="btn-profit-xlsx">XLSX</button>
-            </div>
-          </div>
-          <div class="report-group">
-            <h3>Tax Report (Accounting)</h3>
-            <div class="btn-group">
-              <button id="btn-tax-json">JSON</button>
-              <button id="btn-tax-xlsx">XLSX</button>
+            <div class="table-actions">
+             <div class="action-group" style="display: flex; gap: 6px; align-items: center; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px; border: 1px solid var(--glass-border);">
+               <select id="currency-select" class="glass-input compact" style="border: none; background: transparent; padding: 4px 8px;" title="Tax Report Currency">
+                 <option value="USD">USD - US Dollar</option>
+                 <option value="EUR">EUR - Euro</option>
+                 <option value="BGN">BGN - Bulgarian Lev</option>
+                 <option value="AUD">AUD - Australian Dollar</option>
+                 <option value="BRL">BRL - Brazilian Real</option>
+                 <option value="CAD">CAD - Canadian Dollar</option>
+                 <option value="CHF">CHF - Swiss Franc</option>
+                 <option value="CNY">CNY - Chinese Renminbi Yuan</option>
+                 <option value="CZK">CZK - Czech Koruna</option>
+                 <option value="DKK">DKK - Danish Krone</option>
+                 <option value="GBP">GBP - British Pound</option>
+                 <option value="HKD">HKD - Hong Kong Dollar</option>
+                 <option value="HUF">HUF - Hungarian Forint</option>
+                 <option value="IDR">IDR - Indonesian Rupiah</option>
+                 <option value="ILS">ILS - Israeli New Shekel</option>
+                 <option value="INR">INR - Indian Rupee</option>
+                 <option value="ISK">ISK - Icelandic Króna</option>
+                 <option value="JPY">JPY - Japanese Yen</option>
+                 <option value="KRW">KRW - South Korean Won</option>
+                 <option value="MXN">MXN - Mexican Peso</option>
+                 <option value="MYR">MYR - Malaysian Ringgit</option>
+                 <option value="NOK">NOK - Norwegian Krone</option>
+                 <option value="NZD">NZD - New Zealand Dollar</option>
+                 <option value="PHP">PHP - Philippine Peso</option>
+                 <option value="PLN">PLN - Polish Złoty</option>
+                 <option value="RON">RON - Romanian Leu</option>
+                 <option value="SEK">SEK - Swedish Krona</option>
+                 <option value="SGD">SGD - Singapore Dollar</option>
+                 <option value="THB">THB - Thai Baht</option>
+                 <option value="TRY">TRY - Turkish Lira</option>
+                 <option value="ZAR">ZAR - South African Rand</option>
+               </select>
+               <button id="btn-tax-xlsx" class="btn-ghost" title="Download Accounting Report" style="border: none; background: rgba(255,255,255,0.05);">🧾 Tax Data</button>
+             </div>
+             <button id="btn-tax-json" style="display: none;"></button>
+             <div class="vert-rule"></div>
+               <button id="btn-profit-json" class="btn-ghost" style="display: none;">JSON</button>
+               <button id="btn-profit-xlsx" class="btn-primary compact-btn">⬇ Export XLSX</button>
             </div>
           </div>
-        </div>
-      </section>
+
+          <div class="table-scroll-container">
+             <table class="glass-table" id="transactions-table">
+                <thead>
+                   <tr>
+                     <th data-sort="Item" style="width: 35%;">Item<span class="sort-icon"></span></th>
+                     <th data-sort="Buy Date" style="width: 15%;">Acquired<span class="sort-icon"></span></th>
+                     <th data-sort="Buy Price ($)" class="num-col" style="width: 10%;">Buy Price<span class="sort-icon"></span></th>
+                     <th data-sort="Sell Date" style="width: 15%;">Sold<span class="sort-icon"></span></th>
+                     <th data-sort="Sell Income ($)" class="num-col" style="width: 10%;">Sell Income<span class="sort-icon"></span></th>
+                     <th data-sort="Profit ($)" class="num-col" style="width: 10%;">Profit<span class="sort-icon"></span></th>
+                     <th data-sort="Profit %" class="num-col" style="width: 10%;">ROI %<span class="sort-icon"></span></th>
+                   </tr>
+                </thead>
+                <tbody id="table-body">
+                   <tr class="empty-row"><td colspan="7">No synced data for this period. Click Sync Data to begin.</td></tr>
+                </tbody>
+             </table>
+          </div>
+          <div class="table-pagination" id="table-pagination-controls" style="display: none; justify-content: space-between; align-items: center; padding: 15px 24px; border-top: 1px solid var(--glass-border); background: rgba(0,0,0,0.2);">
+             <div style="display: flex; align-items: center; gap: 15px;">
+                <span id="page-info" style="color: var(--text-muted); font-size: 13px;">Showing 1 - 50 of 3000</span>
+                <select id="page-size-select" class="glass-input" style="padding: 4px 8px; font-size: 13px;">
+                   <option value="50">50 per page</option>
+                   <option value="100">100 per page</option>
+                   <option value="250">250 per page</option>
+                   <option value="500">500 per page</option>
+                   <option value="1000">1000 per page</option>
+                   <option value="99999">All</option>
+                </select>
+             </div>
+             <div style="display: flex; gap: 10px;">
+                <button id="btn-prev-page" class="btn-ghost" style="padding: 6px 12px;">Previous</button>
+                <button id="btn-next-page" class="btn-ghost" style="padding: 6px 12px;">Next</button>
+             </div>
+          </div>
+        </section>
+      </main>
+
     </div>
     <script type="module" src="js/dashboard.js"></script>
   </body>

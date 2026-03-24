@@ -3,43 +3,35 @@ export function initSessionCheck(state) {
   const btnBalance = document.getElementById("btn-get-balance");
 
   btn.addEventListener("click", async () => {
-    btn.disabled = true;
-    btn.textContent = "...";
+    const icon = btn.querySelector('.refresh-icon') || btn;
+    icon.classList.add("rotating");
 
-    if (btnBalance) {
-      btnBalance.disabled = true;
-    }
+    if (btnBalance) btnBalance.disabled = true;
 
     for (const f of state.fetchers) {
-      let cardId = `card-${f.name.toLowerCase().replace(/\s+/g, "")}`;
-      let toggleId = `toggle-${f.name.toLowerCase().replace(/\s+/g, "")}`;
+      const cardId = `card-${f.name.toLowerCase().replace(/\s+/g, "")}`;
+      const toggleId = `toggle-${f.name.toLowerCase().replace(/\s+/g, "")}`;
       const card = document.getElementById(cardId);
       const checkbox = document.getElementById(toggleId);
 
       if (checkbox && !checkbox.checked) continue;
 
-      const statusDiv = card ? card.querySelector(".card-status") : null;
-      if (!statusDiv) continue;
+      const statusDot = card ? card.querySelector(".status-dot") : null;
+      if (!statusDot) continue;
 
-      statusDiv.textContent = "Checking...";
-      statusDiv.className = "card-status status-unknown";
+      // Reset visually before validating
+      statusDot.className = "status-dot status-unknown";
 
       const isConnected = await f.checkSession();
 
       if (isConnected) {
-        statusDiv.textContent = "Connected";
-        statusDiv.className = "card-status status-connected";
+        statusDot.className = "status-dot status-connected";
       } else {
-        statusDiv.textContent = "Disconnected";
-        statusDiv.className = "card-status status-disconnected";
+        statusDot.className = "status-dot status-disconnected";
       }
     }
 
     btn.disabled = false;
-    btn.textContent = "↻ Check";
-
-    if (btnBalance) {
-      btnBalance.disabled = false;
-    }
+    if (btnBalance) btnBalance.disabled = false;
   });
 }

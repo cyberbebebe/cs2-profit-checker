@@ -6,6 +6,64 @@ import {
   getBulkRatesMap,
 } from "../currency.js";
 
+export function getFilteredTransactions(state) {
+  if (!state.dataFetched) return null;
+  const startVal = document.getElementById("report-start-month")?.value;
+  const endVal = document.getElementById("report-end-month")?.value;
+  const includeBuys = document.getElementById("include-buys-checkbox")?.checked;
+
+  if (!startVal || !endVal) return null;
+
+  const matches = matchTransactions(state.allSales, state.allBuys);
+  const [startYear, startMonth] = startVal.split("-");
+  const startDate = new Date(parseInt(startYear), parseInt(startMonth) - 1, 1);
+
+  const [endYear, endMonth] = endVal.split("-");
+  const endDate = new Date(parseInt(endYear), parseInt(endMonth), 0, 23, 59, 59);
+
+  if (startDate > endDate) return null;
+
+  const filtered = matches.filter((m) => {
+    const dateToCheck = m.sell_created_at;
+    if (!dateToCheck) return false;
+    return dateToCheck >= startDate && dateToCheck <= endDate;
+  });
+
+  if (includeBuys) {
+    const matchedBuyTxIds = new Set(
+      matches.filter((m) => !!m.buy_tx_id).map((m) => m.buy_tx_id)
+    );
+
+    const unmatchedBuys = state.allBuys.filter((b) => {
+      if (matchedBuyTxIds.has(b.tx_id)) return false;
+      const d = b.created_at;
+      return d && d >= startDate && d <= endDate;
+    });
+
+    unmatchedBuys.forEach((b) => {
+      filtered.push({
+        item_name: b.item_name,
+        float_val: b.float_val,
+        pattern: b.pattern,
+        phase: b.phase,
+        buy_source: b.source,
+        buy_price: b.price,
+        buy_created_at: b.created_at,
+        buy_currency: b.currency,
+        buy_tx_id: b.tx_id,
+
+        sell_source: "Unsold",
+        sell_price: 0,
+        sell_created_at: null,
+        sell_currency: "USD",
+        profit: 0,
+      });
+    });
+  }
+
+  return { filtered, startVal, endVal, startDate, endDate };
+}
+
 async function initCurrencyDropdown() {
   const select = document.getElementById("currency-select");
   if (!select) return;
@@ -58,50 +116,18 @@ export function initReports(state) {
     btn.textContent = "⏳ Calculating...";
 
     try {
-      const matches = matchTransactions(state.allSales, state.allBuys);
-
-      const startVal = document.getElementById("report-start-month").value;
-      const endVal = document.getElementById("report-end-month").value;
-
-      if (!startVal || !endVal) {
-        alert("Please select both Start and End months.");
+      const filterData = getFilteredTransactions(state);
+      if (!filterData) {
+        alert("Invalid dates or data not fetched.");
         btn.disabled = false;
         btn.textContent = oldText;
         return;
       }
-
-      const [startYear, startMonth] = startVal.split("-");
-      const startDate = new Date(
-        parseInt(startYear),
-        parseInt(startMonth) - 1,
-        1,
-      );
-
-      const [endYear, endMonth] = endVal.split("-");
-      const endDate = new Date(
-        parseInt(endYear),
-        parseInt(endMonth),
-        0,
-        23,
-        59,
-        59,
-      );
-
-      if (startDate > endDate) {
-        alert("Start month cannot be later than End month.");
-        btn.disabled = false;
-        btn.textContent = oldText;
-        return;
-      }
-
-      const filtered = matches.filter((m) => {
-        const dateToCheck = m.sell_created_at;
-        if (!dateToCheck) return false;
-        return dateToCheck >= startDate && dateToCheck <= endDate;
-      });
+      
+      const { filtered, startVal, endVal, endDate } = filterData;
 
       if (filtered.length === 0) {
-        alert("No sales found for this month!");
+        alert("No sales found for this period!");
         btn.disabled = false;
         btn.textContent = oldText;
         return;
@@ -156,12 +182,14 @@ export function initReports(state) {
         );
 
         let profitUSD = 0;
-        if (buyPriceUSD > 0) {
+        if (buyPriceUSD > 0 && sellPriceUSD > 0) {
           profitUSD = sellPriceUSD - buyPriceUSD;
         }
 
         let profitPerc = 0;
-        if (buyPriceUSD > 0) profitPerc = profitUSD / buyPriceUSD;
+        if (buyPriceUSD > 0 && sellPriceUSD > 0) {
+          profitPerc = profitUSD / buyPriceUSD;
+        }
 
         return {
           Item: m.item_name,
@@ -214,7 +242,7 @@ export function initReports(state) {
         // Profit ($) [Col K = 10]
         const cellK = XLSX.utils.encode_cell({ r: i + 1, c: 10 });
         if (!ws[cellK]) ws[cellK] = { t: "n", v: 0 };
-        ws[cellK].f = `IF(F${R}=0, 0, I${R}-F${R})`;
+        ws[cellK].f = `IF(OR(F${R}=0, I${R}=0), 0, I${R}-F${R})`;
         ws[cellK].v = ws_data[i]["Profit ($)"];
 
         // Profit % [Col L = 11]

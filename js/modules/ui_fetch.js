@@ -92,6 +92,9 @@ export function initFetch(state) {
     btn.textContent = "Refreshed";
     btn.disabled = false;
 
+    // Trigger table update
+    btn.dispatchEvent(new Event("fetchComplete"));
+
     setTimeout(() => {
       if (btn.textContent === "Refreshed")
         btn.innerHTML = "<span>⬇ Fetch Data</span>";

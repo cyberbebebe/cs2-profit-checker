@@ -16,7 +16,6 @@ function extractPhase(name) {
 
   if (phase) {
     const cleanName = name.replace(phase, "").replace(/\s+/g, " ").trim();
-
     return { name: cleanName, phase };
   }
   return { name, phase: "" };
