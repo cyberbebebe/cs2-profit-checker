@@ -89,16 +89,11 @@ export function initFetch(state) {
     // Final state
     state.dataFetched = true;
     panelReports.classList.remove("disabled");
-    btn.textContent = "Refreshed";
+    btn.innerHTML = "<span>🔄 Sync Data Again</span>";
     btn.disabled = false;
 
     // Trigger table update
     btn.dispatchEvent(new Event("fetchComplete"));
-
-    setTimeout(() => {
-      if (btn.textContent === "Refreshed")
-        btn.innerHTML = "<span>⬇ Fetch Data</span>";
-    }, 3000);
   });
 
   // BALANCE CHECKER

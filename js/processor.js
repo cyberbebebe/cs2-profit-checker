@@ -34,7 +34,7 @@ export function matchTransactions(sales, buys) {
 
   const results = [];
 
-  // 3. Iterate Sales
+  // 3. Process Sales sequentially
   for (const sale of sales) {
     const sig = generateSignature(sale.item_name, sale.float_val, sale.pattern);
     let potentialBuys = buyMap[sig] || [];
@@ -43,12 +43,10 @@ export function matchTransactions(sales, buys) {
     let matchIndex = -1;
     let matchType = "none";
 
-    // Get sale date once
     const saleDate = getTxDate(sale);
 
     // A: Metadata Match
-    const hasMeta =
-      sale.float_val > 0 || (sale.pattern !== -1 && sale.pattern !== undefined);
+    const hasMeta = sale.float_val > 0 || (sale.pattern !== -1 && sale.pattern !== undefined);
 
     if (hasMeta && potentialBuys.length > 0) {
       for (let i = 0; i < potentialBuys.length; i++) {
@@ -71,17 +69,11 @@ export function matchTransactions(sales, buys) {
             matchType = "asset_id";
 
             // Clean up from main map to avoid double usage
-            const matchSig = generateSignature(
-              match.item_name,
-              match.float_val,
-              match.pattern,
-            );
+            const matchSig = generateSignature(match.item_name, match.float_val, match.pattern);
             const mainList = buyMap[matchSig];
             if (mainList) {
               const idx = mainList.indexOf(match);
-              if (idx !== -1) {
-                mainList.splice(idx, 1);
-              }
+              if (idx !== -1) mainList.splice(idx, 1);
             }
             break;
           }
@@ -122,10 +114,7 @@ export function matchTransactions(sales, buys) {
 
       // Stats
       profit: parseFloat(profit.toFixed(2)),
-      profit_percent:
-        match && match.price > 0
-          ? ((profit / match.price) * 100).toFixed(2)
-          : 0,
+      profit_percent: match && match.price > 0 ? ((profit / match.price) * 100).toFixed(2) : 0,
 
       // Meta
       float_val: sale.float_val,
