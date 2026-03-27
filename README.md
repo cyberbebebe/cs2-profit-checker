@@ -1,6 +1,6 @@
 # CS2 Profit Checker <br> Automated CS2 Trading Profit & Tax Manager
 
-## Supported: **CSFloat, DMarket, Buff163, BuffMarket, Youpin, CSMoney (Market & Trade) and Skinport**
+## Supported marketplaces: **CSFloat, DMarket, Buff163, BuffMarket, Youpin, CSMoney (Market & Trade) and Skinport**
 
 ## 🔍 Features & What It Does ❓
 
