@@ -51,11 +51,11 @@ This extension operates entirely locally on your PC. I don't know how to send da
    - CSMoney's Trade section fetches only "Trade" deals and not tested personally.
 
 4. **Commodity & Trades matching (Profit report & Dashboard)**:
-   Since commodity items such as TF2 Keys, Stickers, Containers, Graffitis and Charms\* do not have unique attributes like skins do, I cannot match them. They will **not** be matched and Profit will be set to \$0 until both Buy and Sell prices will be set manually, then profit will be calculated automatically.
+   Since commodity items such as TF2 Keys, Stickers, Containers, Graffitis and Charms\* do not have unique attributes like skins do, I cannot match them. They will **not** be matched and Profit will be set to \$0 until both Buy and Sell prices will be set, then profit will be recalculated automatically.
 
    \*Charms have patterns, but they are not unique enough to be matched by only this attribute.
 
-If you have any questions, suggestions, or encounter a bug, please open a ticket under [Issues](https://github.com/cyberbebebe/cs2-profit-checker/issues) or message me on [Steam](https://steamcommunity.com/profiles/76561198874907166).
+If you have any questions, suggestions, or found a bug, please write to [Issues](https://github.com/cyberbebebe/cs2-profit-checker/issues) or message me on [Steam](https://steamcommunity.com/profiles/76561198874907166).
 
 ## Created for the CS2 trading community and enthusiasts by a CS2 trader
 
