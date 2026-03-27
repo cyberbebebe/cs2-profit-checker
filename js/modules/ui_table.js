@@ -7,7 +7,7 @@ let sortAsc = false;
 window.priceOverrides = window.priceOverrides || { buy: {}, sell: {} };
 
 let currentPage = 1;
-let pageSize = 50;
+let pageSize = 500;
 
 // Cached data — avoids re-computing currency conversion on sort/page changes
 let cachedRowsData = null;
