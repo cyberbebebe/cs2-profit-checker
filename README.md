@@ -51,7 +51,7 @@ This extension operates entirely locally on your PC. I don't know how to send da
    - CSMoney's Trade section fetches only "Trade" deals and not tested personally.
 
 4. **Commodity & Trades matching (Profit report & Dashboard)**:
-   Since commodity items such as TF2 Keys, Stickers, Containers, Graffitis and Charms\* do not have unique attributes like skins do, I cannot match them by FIFO or LIFO (strange). They will **not** be matched and Profit will be set to \$0 until both Buy and Sell prices will be set manually, then profit will be calculated automatically.
+   Since commodity items such as TF2 Keys, Stickers, Containers, Graffitis and Charms\* do not have unique attributes like skins do, I cannot match them. They will **not** be matched and Profit will be set to \$0 until both Buy and Sell prices will be set manually, then profit will be calculated automatically.
 
    \*Charms have patterns, but they are not unique enough to be matched by only this attribute.
 
