@@ -46,10 +46,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   let startVal = currentMonth;
   let endVal = currentMonth;
 
+  window.txOverrides = { buy: {}, sell: {} };
+
   try {
-    const stored = await chrome.storage.local.get(["dateStart", "dateEnd"]);
+    const stored = await chrome.storage.local.get(["dateStart", "dateEnd", "txOverrides"]);
     if (stored.dateStart) startVal = stored.dateStart;
     if (stored.dateEnd) endVal = stored.dateEnd;
+    if (stored.txOverrides) window.txOverrides = stored.txOverrides;
   } catch (e) {
     console.warn("chrome.storage not available, using defaults:", e);
   }

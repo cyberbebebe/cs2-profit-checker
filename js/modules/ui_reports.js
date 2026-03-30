@@ -61,6 +61,28 @@ export function getFilteredTransactions(state) {
     });
   }
 
+  // Inject user overrides globally so Dashboards and Profit Reports perfectly synchronize
+  if (window.txOverrides) {
+    filtered.forEach((m, idx) => {
+      const buyKey = m.buy_tx_id || ("b-" + encodeURIComponent(m.item_name) + "-" + idx);
+      const sellKey = m.sell_tx_id || ("s-" + encodeURIComponent(m.item_name) + "-" + idx);
+
+      const bO = window.txOverrides.buy?.[buyKey];
+      if (bO) {
+        if (bO.price !== undefined) m.buy_price = bO.price;
+        if (bO.date) m.buy_created_at = new Date(bO.date);
+        if (bO.source) m.buy_source = bO.source;
+      }
+
+      const sO = window.txOverrides.sell?.[sellKey];
+      if (sO) {
+        if (sO.price !== undefined) m.sell_price = sO.price;
+        if (sO.date) m.sell_created_at = new Date(sO.date);
+        if (sO.source) m.sell_source = sO.source;
+      }
+    });
+  }
+
   return { filtered, startVal, endVal, startDate, endDate };
 }
 

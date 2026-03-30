@@ -256,8 +256,8 @@ select.glass-input option { background-color: var(--bg-dark); color: #fff; }
 .is-scrolling .inline-edit:hover { background: transparent; }
 .inline-edit::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-/* Click-to-edit price spans */
-.editable-price {
+/* Click-to-edit spans */
+.editable-price, .editable-date, .editable-source {
   display: inline-flex;
   align-items: center;
   padding: 4px 6px;
@@ -267,7 +267,9 @@ select.glass-input option { background-color: var(--bg-dark); color: #fff; }
   cursor: pointer;
   min-width: 60px;
 }
-.editable-price:hover { background: rgba(255,255,255,0.05); }
+.editable-date { font-size: 13px; font-weight: 500; min-width: auto; }
+.editable-source { font-size: 13px; font-weight: 500; min-width: auto; }
+.editable-price:hover, .editable-date:hover, .editable-source:hover { background: rgba(255,255,255,0.05); }
 .price-sign { color: var(--text-muted); margin-right: 2px; flex-shrink: 0; }
 .active-edit {
   background: rgba(0,0,0,0.4); color: #fff;
@@ -276,4 +278,6 @@ select.glass-input option { background-color: var(--bg-dark); color: #fff; }
   padding: 2px 4px; width: auto; min-width: 50px; max-width: 120px;
   box-shadow: 0 0 0 1px var(--accent-primary);
 }
+.active-edit.date-edit { font-size: 13px; font-weight: 500; max-width: none; min-width: 160px; }
+.active-edit.source-edit { font-size: 13px; font-weight: 500; max-width: 100px; min-width: 60px; }
 .active-edit::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }

@@ -66,55 +66,131 @@ export function initTable(state) {
      renderTable(state);
   });
 
-  // Event Delegation — click-to-edit + profit updates
+  // Event Delegation — unified click-to-edit + profit updates
   const tbody = document.getElementById("table-body");
   const profitBadge = document.getElementById("ui-total-profit");
   if (tbody) {
     tbody.addEventListener("click", (e) => {
-      const span = e.target.closest(".editable-price");
-      if (!span || span.querySelector("input")) return;
+      const container = e.target.closest(".editable-price, .editable-source, .editable-date");
+      if (!container || container.querySelector("input")) return;
 
-      const key = span.dataset.key;
-      const type = span.classList.contains("table-input-buy") ? "buy" : "sell";
-      const valSpan = span.querySelector(".price-val");
-      const currentVal = valSpan ? valSpan.textContent.trim() : "0.00";
+      const parentCell = container.closest(".table-input-buy, .table-input-sell");
+      if (!parentCell) return;
+      const key = parentCell.dataset.key;
+      const type = parentCell.classList.contains("table-input-buy") ? "buy" : "sell";
 
-      const input = document.createElement("input");
-      input.type = "number";
-      input.step = "0.01";
-      input.className = "active-edit";
-      input.value = currentVal;
+      if (container.classList.contains("editable-price")) {
+        const valSpan = container.querySelector(".price-val");
+        const currentVal = valSpan ? valSpan.textContent.trim() : "0.00";
+        const input = document.createElement("input");
+        input.type = "number";
+        input.step = "0.01";
+        input.className = "active-edit";
+        input.value = currentVal;
+        valSpan.style.display = "none";
+        container.appendChild(input);
+        input.focus();
+        input.select();
 
-      // Hide the value span, show input next to $
-      valSpan.style.display = "none";
-      span.appendChild(input);
-      input.focus();
-      input.select();
+        const save = () => {
+          const parsedVal = parseFloat(input.value) || 0;
+          if (!window.txOverrides[type][key]) window.txOverrides[type][key] = {};
+          window.txOverrides[type][key].price = parsedVal;
+          try { chrome.storage.local.set({ txOverrides: window.txOverrides }); } catch (e) {}
 
-      const save = () => {
-        const parsedVal = parseFloat(input.value) || 0;
-        if (type === "buy") window.priceOverrides.buy[key] = parsedVal;
-        else window.priceOverrides.sell[key] = parsedVal;
+          cachedRowsData = null;
+          cachedTRs.clear();
+          renderTable(state);
+        };
+        input.addEventListener("blur", save, { once: true });
+        input.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
+          if (ev.key === "Escape") { valSpan.textContent = currentVal; valSpan.style.display = ""; if (input.parentNode) input.remove(); }
+        });
+      }
 
-        // Restore span, remove input
-        valSpan.textContent = parsedVal.toFixed(2);
-        valSpan.style.display = "";
-        if (input.parentNode) input.remove();
+      else if (container.classList.contains("editable-source")) {
+        const currentVal = container.textContent.trim();
+        const isUnsold = currentVal === "—" || currentVal === "Unsold" || currentVal === "N/A";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "active-edit source-edit";
+        input.placeholder = "N/A";
+        input.value = isUnsold ? "" : currentVal;
 
-        // Update profit for this row
-        const tr = span.closest("tr");
-        if (tr) updateRowProfit(tr, profitBadge);
-      };
+        const oldText = container.textContent;
+        container.textContent = "";
+        container.appendChild(input);
+        input.focus();
+        input.select();
 
-      input.addEventListener("blur", save, { once: true });
-      input.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
-        if (ev.key === "Escape") {
-          valSpan.textContent = currentVal;
-          valSpan.style.display = "";
-          if (input.parentNode) input.remove();
+        const save = () => {
+          let newVal = input.value.trim();
+          if (!newVal) newVal = "N/A";
+          if (!window.txOverrides[type][key]) window.txOverrides[type][key] = {};
+          window.txOverrides[type][key].source = newVal;
+          try { chrome.storage.local.set({ txOverrides: window.txOverrides }); } catch (e) {}
+          
+          cachedRowsData = null;
+          cachedTRs.clear();
+          renderTable(state);
+        };
+        input.addEventListener("blur", save, { once: true });
+        input.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
+          if (ev.key === "Escape") { container.textContent = oldText; }
+        });
+      }
+
+      else if (container.classList.contains("editable-date")) {
+        const input = document.createElement("input");
+        input.type = "datetime-local";
+        input.className = "active-edit date-edit";
+
+        const rawDateStr = container.dataset.raw;
+        if (rawDateStr && rawDateStr !== "null" && rawDateStr !== "undefined") {
+          try {
+            const d = new Date(rawDateStr);
+            if (!isNaN(d.getTime())) {
+              const localISOTime = (new Date(d.getTime() - d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+              input.value = localISOTime;
+            }
+          } catch (e) {}
         }
-      });
+
+        const oldText = container.textContent;
+        container.textContent = "";
+        container.appendChild(input);
+        input.focus();
+        if (input.showPicker) {
+           try { input.showPicker(); } catch(e){} // Catch errors if showPicker fails
+        }
+
+        const save = () => {
+          const newVal = input.value;
+          if (!newVal) {
+            container.textContent = "N/A Date";
+            if (window.txOverrides[type][key]) {
+               delete window.txOverrides[type][key].date;
+            }
+          } else {
+            const newDateObj = new Date(newVal);
+            if (!window.txOverrides[type][key]) window.txOverrides[type][key] = {};
+            window.txOverrides[type][key].date = newDateObj.toISOString();
+            container.textContent = fmtD(window.txOverrides[type][key].date);
+          }
+          try { chrome.storage.local.set({ txOverrides: window.txOverrides }); } catch (e) {}
+          
+          cachedRowsData = null;
+          cachedTRs.clear();
+          renderTable(state);
+        };
+        input.addEventListener("blur", save, { once: true });
+        input.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
+          if (ev.key === "Escape") { container.textContent = oldText; }
+        });
+      }
     });
   }
 }
@@ -187,6 +263,7 @@ function updateStatsBar(rowsData) {
   const statWorst = document.getElementById("stat-worst");
   const statWorstPerc = document.getElementById("stat-worst-perc");
   const statAvg = document.getElementById("stat-avg");
+  const statAvgTime = document.getElementById("stat-avg-time");
   const statAvgDay = document.getElementById("stat-avg-day");
   const statAvgWeek = document.getElementById("stat-avg-week");
   const statAvgMonth = document.getElementById("stat-avg-month");
@@ -196,6 +273,7 @@ function updateStatsBar(rowsData) {
   let totalRealizedProfit = 0;
   let realizedDeals = 0;
   let earliestDate = Infinity, latestDate = -Infinity;
+  let totalDealTimeMs = 0;
 
   for (const row of rowsData) {
     if (row.bPriceUsd > 0 && row.sPriceUsd > 0) {
@@ -211,6 +289,13 @@ function updateStatsBar(rowsData) {
          if (!isNaN(t)) {
             if (t < earliestDate) earliestDate = t;
             if (t > latestDate) latestDate = t;
+         }
+       }
+       if (row.bDate && row.sDate) {
+         const bT = new Date(row.bDate).getTime();
+         const sT = new Date(row.sDate).getTime();
+         if (!isNaN(bT) && !isNaN(sT) && sT >= bT) {
+           totalDealTimeMs += (sT - bT);
          }
        }
     }
@@ -236,6 +321,16 @@ function updateStatsBar(rowsData) {
     const avgProfit = totalRealizedProfit / realizedDeals;
     statAvg.textContent = (avgProfit >= 0 ? "+$" : "-$") + Math.abs(avgProfit).toFixed(2);
     statAvg.className = "stat-value " + (avgProfit > 0 ? "pos-profit" : (avgProfit < 0 ? "neg-profit" : "zero-profit"));
+
+    if (statAvgTime) {
+      if (totalDealTimeMs > 0 && realizedDeals > 0) {
+        statAvgTime.textContent = formatDealTime(totalDealTimeMs / realizedDeals);
+        statAvgTime.className = "stat-sub text-muted";
+        statAvgTime.style.visibility = "visible";
+      } else {
+        statAvgTime.style.visibility = "hidden";
+      }
+    }
 
     let daysDiff = 1;
     let monthsDiff = 1;
@@ -280,10 +375,24 @@ function updateStatsBar(rowsData) {
     statWorst.textContent = empty(); statWorst.className = "stat-value";
     statWorstPerc.textContent = empty(); statWorstPerc.className = "stat-sub";
     statAvg.textContent = empty(); statAvg.className = "stat-value";
+    if (statAvgTime) statAvgTime.style.visibility = "hidden";
     statAvgDay.textContent = "+$0/24h"; statAvgDay.className = "stat-value";
     statAvgWeek.textContent = "+$0/7d"; statAvgWeek.className = "stat-value";
     statAvgMonth.textContent = "+$0/30d"; statAvgMonth.className = "stat-value";
   }
+}
+
+// Format average block deal time
+function formatDealTime(ms) {
+  if (ms <= 0) return "—";
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (hrs < 24) return `${hrs}h ${m}m`;
+  const days = Math.floor(hrs / 24);
+  const h = hrs % 24;
+  return `${days}d ${h}h`;
 }
 
 // Format date helper
@@ -319,13 +428,14 @@ function sortRows(rowsData) {
 
 // Row key for DOM pool
 function rowKey(row) {
-  return row.buyKey + '|' + row.sellKey;
+  return row.domKey;
 }
 
 // Build HTML for a single row
 function buildRowHtml(row) {
-  const bStr = fmtD(row.bDate);
-  const sStr = fmtD(row.sDate);
+  const bDateDisplay = (!row.bDate || (row.bSource === "N/A" && !row.bDate)) ? "N/A Date" : fmtD(row.bDate);
+  const sDateDisplay = (!row.sDate || ((row.sSource === "N/A" || row.sSource === "Unsold") && !row.sDate)) ? "N/A Date" : fmtD(row.sDate);
+  const sellDisplay = row.sSource === "Unsold" ? "Unsold" : row.sSource;
 
   let metaStr = '';
   if(row.float) metaStr += `Float: <span class='meta-tag'>${row.float.toFixed(8)}</span>`;
@@ -338,11 +448,20 @@ function buildRowHtml(row) {
   const profitClass = row.profitUsd > 0 ? "pos-profit" : (row.profitUsd < 0 ? "neg-profit" : "zero-profit");
   const roiClass = row.profitPerc > 0 ? "pos-profit" : (row.profitPerc < 0 ? "neg-profit" : "zero-profit");
 
+  const buyRawDateStr = row.bDate ? new Date(row.bDate).toISOString() : "";
+  const sellRawDateStr = row.sDate ? new Date(row.sDate).toISOString() : "";
+
   return `<tr>
     <td><div class="item-main"><span class="item-name">${row.item}${specialBadge}</span><span class="item-meta">${metaStr}</span></div></td>
-    <td><div class="item-main">${row.bSource === "N/A" ? `<span class="inline-edit" style="text-align:left;padding:2px;color:var(--text-muted)">—</span>` : `<span style="white-space:nowrap">${bStr}</span><span class="item-meta">${row.bSource}</span>`}</div></td>
+    <td><div class="item-main table-input-buy" data-key="${row.buyKey}">
+        <span class="editable-date text-muted" data-raw="${buyRawDateStr}" title="Click to edit">${bDateDisplay}</span>
+        <span class="item-meta editable-source" title="Click to edit">${row.bSource}</span>
+    </div></td>
     <td class="num-col"><span class="editable-price table-input-buy" data-key="${row.buyKey}"><span class="price-sign">$</span><span class="price-val">${row.bPriceUsd.toFixed(2)}</span></span></td>
-    <td><div class="item-main">${row.sSource === "N/A" ? `<span class="inline-edit" style="text-align:left;padding:2px;color:var(--text-muted)">—</span>` : `<span style="white-space:nowrap">${sStr}</span><span class="item-meta">${row.sSource}</span>`}</div></td>
+    <td><div class="item-main table-input-sell" data-key="${row.sellKey}">
+        <span class="editable-date text-muted" data-raw="${sellRawDateStr}" title="Click to edit">${sDateDisplay}</span>
+        <span class="item-meta editable-source" title="Click to edit">${sellDisplay}</span>
+    </div></td>
     <td class="num-col"><span class="editable-price table-input-sell" data-key="${row.sellKey}"><span class="price-sign">$</span><span class="price-val">${row.sPriceUsd.toFixed(2)}</span></span></td>
     <td class="num-col td-profit ${profitClass}">$${row.profitUsd.toFixed(2)}</td>
     <td class="num-col td-profit ${roiClass}">${row.profitPerc.toFixed(2)}%</td>
@@ -462,15 +581,12 @@ export async function renderTable(state) {
     const dBuy = m.buy_created_at || new Date(0);
     const dSell = m.sell_created_at || new Date(0);
 
-    let buyPriceUSD = convertToUSD(m.buy_price, m.buy_currency, dBuy);
-    let sellPriceUSD = convertToUSD(m.sell_price, m.sell_currency, dSell);
-
+    let buyDateStr = m.buy_created_at || null;
+    let sellDateStr = m.sell_created_at || null;
+    let bSourceStr = m.buy_source || "N/A";
+    let sSourceStr = m.sell_source || "N/A";
     const buyKey = m.buy_tx_id || ("b-" + encodeURIComponent(m.item_name) + "-" + idx);
     const sellKey = m.sell_tx_id || ("s-" + encodeURIComponent(m.item_name) + "-" + idx);
-
-    if (window.priceOverrides.buy[buyKey] !== undefined) buyPriceUSD = window.priceOverrides.buy[buyKey];
-    if (window.priceOverrides.sell[sellKey] !== undefined) sellPriceUSD = window.priceOverrides.sell[sellKey];
-
     let profitUSD = 0;
     let profitPerc = 0;
     if (buyPriceUSD > 0 && sellPriceUSD > 0) {
@@ -483,16 +599,17 @@ export async function renderTable(state) {
       item: m.item_name,
       float: m.float_val,
       pattern: m.pattern,
-      bDate: m.buy_created_at,
-      sDate: m.sell_created_at,
+      bDate: buyDateStr,
+      sDate: sellDateStr,
       bPriceUsd: buyPriceUSD,
       sPriceUsd: sellPriceUSD,
       profitUsd: profitUSD,
       profitPerc: profitPerc,
-      bSource: m.buy_source,
-      sSource: m.sell_source,
+      bSource: bSourceStr,
+      sSource: sSourceStr,
       buyKey: buyKey,
-      sellKey: sellKey
+      sellKey: sellKey,
+      domKey: buyKey + '|' + sellKey + '|' + idx
     };
   });
 
