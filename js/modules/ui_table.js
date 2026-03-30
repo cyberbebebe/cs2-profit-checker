@@ -581,6 +581,9 @@ export async function renderTable(state) {
     const dBuy = m.buy_created_at || new Date(0);
     const dSell = m.sell_created_at || new Date(0);
 
+    let buyPriceUSD = convertToUSD(m.buy_price, m.buy_currency, dBuy);
+    let sellPriceUSD = convertToUSD(m.sell_price, m.sell_currency, dSell);
+
     let buyDateStr = m.buy_created_at || null;
     let sellDateStr = m.sell_created_at || null;
     let bSourceStr = m.buy_source || "N/A";
