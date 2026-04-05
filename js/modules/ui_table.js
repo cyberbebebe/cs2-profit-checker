@@ -1,5 +1,4 @@
 import { getFilteredTransactions } from "./ui_reports.js";
-import { formatDate } from "../utils.js";
 import { getBulkRatesMap, getRateFromMap } from "../currency.js";
 
 let currentSortCol = "Sell Date";
@@ -98,9 +97,11 @@ export function initTable(state) {
           window.txOverrides[type][key].price = parsedVal;
           try { chrome.storage.local.set({ txOverrides: window.txOverrides }); } catch (e) {}
 
-          cachedRowsData = null;
-          cachedTRs.clear();
-          renderTable(state);
+          valSpan.textContent = parsedVal.toFixed(2);
+          valSpan.style.display = "";
+          if (input.parentNode) input.remove();
+          const tr = container.closest("tr");
+          if (tr) updateRowProfit(tr, profitBadge);
         };
         input.addEventListener("blur", save, { once: true });
         input.addEventListener("keydown", (ev) => {
@@ -131,9 +132,14 @@ export function initTable(state) {
           window.txOverrides[type][key].source = newVal;
           try { chrome.storage.local.set({ txOverrides: window.txOverrides }); } catch (e) {}
           
-          cachedRowsData = null;
-          cachedTRs.clear();
-          renderTable(state);
+          container.textContent = newVal;
+          if (cachedRowsData) {
+            const rowObj = cachedRowsData.find(r => r.buyKey === key || r.sellKey === key);
+            if (rowObj) {
+              if (type === "buy") rowObj.bSource = newVal;
+              else rowObj.sSource = newVal;
+            }
+          }
         };
         input.addEventListener("blur", save, { once: true });
         input.addEventListener("keydown", (ev) => {
@@ -181,9 +187,14 @@ export function initTable(state) {
           }
           try { chrome.storage.local.set({ txOverrides: window.txOverrides }); } catch (e) {}
           
-          cachedRowsData = null;
-          cachedTRs.clear();
-          renderTable(state);
+          if (cachedRowsData) {
+            const rowObj = cachedRowsData.find(r => r.buyKey === key || r.sellKey === key);
+            if (rowObj) {
+              if (type === "buy") rowObj.bDate = window.txOverrides[type][key]?.date || null;
+              else rowObj.sDate = window.txOverrides[type][key]?.date || null;
+              updateStatsBar(cachedRowsData);
+            }
+          }
         };
         input.addEventListener("blur", save, { once: true });
         input.addEventListener("keydown", (ev) => {
@@ -525,7 +536,7 @@ function renderRows(rowsData, tbody) {
   }
 }
 
-export async function renderTable(state) {
+export async function renderTable(state, preserveScroll = false) {
   const headers = document.querySelectorAll("#transactions-table th");
   headers.forEach(th => {
     th.classList.remove("sort-asc", "sort-desc");
@@ -542,8 +553,10 @@ export async function renderTable(state) {
     sortRows(cachedRowsData);
     renderRows(cachedRowsData, tbody);
 
-    const scrollContainer = document.querySelector('.table-scroll-container');
-    if (scrollContainer) scrollContainer.scrollTop = 0;
+    if (!preserveScroll) {
+      const scrollContainer = document.querySelector('.table-scroll-container');
+      if (scrollContainer) scrollContainer.scrollTop = 0;
+    }
 
     profitBadge.textContent = (cachedTotalProfit >= 0 ? "+$" : "-$") + Math.abs(cachedTotalProfit).toFixed(2);
     profitBadge.className = "profit-badge " + (cachedTotalProfit >= 0 ? "pos" : "neg");
@@ -563,7 +576,7 @@ export async function renderTable(state) {
 
   const { filtered, endDate } = filterData;
 
-  const startStr = "2014-01-01";
+  const startStr = "2013-01-01";
   const endStr = endDate.toISOString().split("T")[0];
   const bulkMaps = await getBulkRatesMap(["CNY", "EUR"], "USD", startStr, endStr);
   const cnyMap = bulkMaps["CNY"] || {};
@@ -623,8 +636,11 @@ export async function renderTable(state) {
   sortRows(rowsData);
   renderRows(rowsData, tbody);
 
-  const scrollContainer = document.querySelector('.table-scroll-container');
-  if (scrollContainer) scrollContainer.scrollTop = 0;
+  if (!preserveScroll) {
+    const scrollContainer = document.querySelector('.table-scroll-container');
+    if (scrollContainer) scrollContainer.scrollTop = 0;
+  }
+
 
   profitBadge.textContent = (cachedTotalProfit >= 0 ? "+$" : "-$") + Math.abs(cachedTotalProfit).toFixed(2);
   profitBadge.className = "profit-badge " + (cachedTotalProfit >= 0 ? "pos" : "neg");

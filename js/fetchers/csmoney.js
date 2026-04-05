@@ -58,14 +58,20 @@ export class CSMoneyFetcher extends BaseFetcher {
   }
 
   async getSales() {
-    const sold = await this.fetchHistory("sold", "sell");
-    const protectedSales = await this.fetchHistory("trade_protected", "sell");
-    return [...sold, ...protectedSales];
+    const [sold, protectedSales, protectedInstantSales, instantSold] = await Promise.all([
+      this.fetchHistory("sold", "sell"),
+      this.fetchHistory("trade_protected", "sell"),
+      this.fetchHistory("trade_protected", "instant_sell"),
+      this.fetchHistory("sold", "instant_sell")
+    ]);
+    return [...sold, ...protectedSales, ...protectedInstantSales, ...instantSold];
   }
 
   async getBuys() {
-    const buy = await this.fetchHistory("accepted", "buy");
-    const protectedBuys = await this.fetchHistory("trade_protected", "buy");
+    const [buy, protectedBuys] = await Promise.all([
+      this.fetchHistory("accepted", "buy"),
+      this.fetchHistory("trade_protected", "buy")
+    ]);
     return [...buy, ...protectedBuys];
   }
 
@@ -73,9 +79,7 @@ export class CSMoneyFetcher extends BaseFetcher {
     let allTxs = [];
     let offsetParam = "";
 
-    let typeParam = "";
-    if (type === "buy") typeParam = "&type=buy";
-    if (type === "sell") typeParam = "&type=sell"; // API might default to sell, but explicit is better
+    let typeParam = type ? `&type=${type}` : "";
 
     while (true) {
       const url = `https://cs.money/2.0/market/history?limit=100&noCache=true${offsetParam}&status=${status}${typeParam}`;
@@ -128,7 +132,7 @@ export class CSMoneyFetcher extends BaseFetcher {
     }
 
     // 1. SELL Logic
-    if (raw.type === "sell" && raw.details && raw.details.sellOrder) {
+    if ((raw.type === "sell" || raw.type === "instant_sell") && raw.details && raw.details.sellOrder) {
       const skins = raw.details.sellOrder.skins;
       const asset = skins.asset;
 

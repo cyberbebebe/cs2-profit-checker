@@ -69,14 +69,14 @@ export function getFilteredTransactions(state) {
 
       const bO = window.txOverrides.buy?.[buyKey];
       if (bO) {
-        if (bO.price !== undefined) m.buy_price = bO.price;
+        if (bO.price !== undefined) { m.buy_price = bO.price; m.buy_currency = "USD"; }
         if (bO.date) m.buy_created_at = new Date(bO.date);
         if (bO.source) m.buy_source = bO.source;
       }
 
       const sO = window.txOverrides.sell?.[sellKey];
       if (sO) {
-        if (sO.price !== undefined) m.sell_price = sO.price;
+        if (sO.price !== undefined) { m.sell_price = sO.price; m.sell_currency = "USD"; }
         if (sO.date) m.sell_created_at = new Date(sO.date);
         if (sO.source) m.sell_source = sO.source;
       }
