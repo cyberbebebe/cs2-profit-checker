@@ -39,19 +39,16 @@ This extension operates entirely locally on your PC. I don't know how to send da
    - **Youpin** - 20 transactions per request.
    - **CSMoney Market** - 100 transactions per request.
 
-2. **Steam:** Used only to fetch inventory (for the Pre-Tax 'Stocktaking' sheet), not your transaction history. There are a few reasons for this:
-   - Most high-volume trading occurs on 3rd-party marketplaces anyway.
-   - Steam has a strict limit of 500 non-filterable transactions per request.
-   - Steam trades are also not fetched as it will fetch for hours.
-   - It would require inspection of every CS skin for each transaction and each trade offer.
+2. **Non-fetchable:**
+   - Buff163, Youpin **NON-CS2 items** - require other endpoints to fetch, will implement later. 
+   - Steam Community Market transactions - no metadata, currencies hell. (Maybe will implement, not main priority)
+   - Steam "Item(s)-for-Item(s)" trades - no metadata, will take to long to fetch. (*almost unimplementable*)
+   - CSMoney Trade - Not tested personally, seems correct. However, there is only deals made after 2025 i believe. 
+   - Skinport: Virtual Inventory/Store - no, Sales - not tested personally, check prices, write to me if not correct.
+   - Other marketplaces - too many exist, I don't use every or/and some have inconvenient history format to fetch.
 
-3. **Marketplace-Specific issues:**
-   - DMarket does not provide an AssetID or item "metadata" for transactions made before September 2025.
-   - Skinport sales data handling might be incorrect. Your Skinport inventory fetching is also not implemented yet. (Reason: I cannot sell here, so I cannot check requests personally).
-   - CSMoney's Trade section fetches only "Trade" deals and not tested personally.
-
-4. **Commodity & Trades matching (Profit report & Dashboard)**:
-   Since commodity items such as TF2 Keys, Stickers, Containers, Graffitis and Charms\* do not have unique attributes like skins do, I cannot match them. They will **not** be matched and Profit will be set to \$0 until both Buy and Sell prices will be set, then profit will be recalculated automatically.
+3. **Commodity & Trades matching (Profit report & Dashboard)**:
+   Since commodity items such as TF2 Keys, Stickers, Containers, Graffitis and Charms\* do not have unique attributes like skins do, I cannot match them. They will **not** be matched, Profit will be set to \$0 until both Buy and Sell prices will be set, then profit will be recalculated automatically.
 
    \*Charms have patterns, but they are not unique enough to be matched by only this attribute.
 
