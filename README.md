@@ -43,8 +43,8 @@ This extension operates entirely locally on your PC. I don't know how to send da
    - NON-CS2 items on Buff163 & Youpin - require other endpoints to fetch, will implement later. 
    - Steam Community Market transactions - no metadata, currencies hell. (not main priority).
    - Steam "Item(s)-for-Item(s)" trades - no metadata, will take to long to fetch. (*almost unimplementable*).
-   - CSMoney Trade - Not tested personally, seems correct. However, there is only deals made after 2025 i believe. 
-   - Skinport: Virtual Inventory/Store - no, Sales - not tested personally, check prices, write to me if not correct.
+   - CSMoney Trade - Not tested personally, seems correct. However, csmoney deleted trades made before 2025.
+   - Skinport: Virtual Inventory/Store - no, Sales - not tested personally, please verify, if not correct - DM me.
    - Other marketplaces - too many exist, I don't use every, some have inconvenient history format to fetch.
 
 3. **Commodity & Trades matching (Profit report & Dashboard)**:
