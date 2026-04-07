@@ -41,11 +41,11 @@ This extension operates entirely locally on your PC. I don't know how to send da
 
 2. **Non-fetchable:**
    - Buff163, Youpin **NON-CS2 items** - require other endpoints to fetch, will implement later. 
-   - Steam Community Market transactions - no metadata, currencies hell. (Maybe will implement, not main priority)
-   - Steam "Item(s)-for-Item(s)" trades - no metadata, will take to long to fetch. (*almost unimplementable*)
+   - Steam Community Market transactions - no metadata, currencies hell. (not main priority).
+   - Steam "Item(s)-for-Item(s)" trades - no metadata, will take to long to fetch. (*almost unimplementable*).
    - CSMoney Trade - Not tested personally, seems correct. However, there is only deals made after 2025 i believe. 
    - Skinport: Virtual Inventory/Store - no, Sales - not tested personally, check prices, write to me if not correct.
-   - Other marketplaces - too many exist, I don't use every or/and some have inconvenient history format to fetch.
+   - Other marketplaces - too many exist, I don't use every, some have inconvenient history format to fetch.
 
 3. **Commodity & Trades matching (Profit report & Dashboard)**:
    Since commodity items such as TF2 Keys, Stickers, Containers, Graffitis and Charms\* do not have unique attributes like skins do, I cannot match them. They will **not** be matched, Profit will be set to \$0 until both Buy and Sell prices will be set, then profit will be recalculated automatically.
