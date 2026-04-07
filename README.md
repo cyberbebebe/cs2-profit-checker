@@ -40,7 +40,7 @@ This extension operates entirely locally on your PC. I don't know how to send da
    - **CSMoney Market** - 100 transactions per request.
 
 2. **Non-fetchable:**
-   - Buff163, Youpin **NON-CS2 items** - require other endpoints to fetch, will implement later. 
+   - NON-CS2 items on Buff163 & Youpin - require other endpoints to fetch, will implement later. 
    - Steam Community Market transactions - no metadata, currencies hell. (not main priority).
    - Steam "Item(s)-for-Item(s)" trades - no metadata, will take to long to fetch. (*almost unimplementable*).
    - CSMoney Trade - Not tested personally, seems correct. However, there is only deals made after 2025 i believe. 
