@@ -157,8 +157,9 @@
                 <span class="stat-sub neg-profit" id="stat-worst-perc">—</span>
               </div>
               <div class="stat-group">
-                <span class="stat-label">Avg/Deal</span>
+                <span class="stat-label">Avg Deal</span>
                 <span class="stat-value" id="stat-avg">—</span>
+                <span class="stat-sub" id="stat-avg-perc">—</span>
                 <span class="stat-sub" id="stat-avg-time" style="visibility: hidden;">—</span>
               </div>
               <div class="stat-group">
@@ -191,13 +192,6 @@
                       <option value="AUD">AUD</option><option value="BRL">BRL</option><option value="CAD">CAD</option>
                       <option value="CHF">CHF</option><option value="CNY">CNY</option><option value="CZK">CZK</option>
                       <option value="DKK">DKK</option><option value="GBP">GBP</option><option value="HKD">HKD</option>
-                      <option value="HUF">HUF</option><option value="IDR">IDR</option><option value="ILS">ILS</option>
-                      <option value="INR">INR</option><option value="ISK">ISK</option><option value="JPY">JPY</option>
-                      <option value="KRW">KRW</option><option value="MXN">MXN</option><option value="MYR">MYR</option>
-                      <option value="NOK">NOK</option><option value="NZD">NZD</option><option value="PHP">PHP</option>
-                      <option value="PLN">PLN</option><option value="RON">RON</option><option value="SEK">SEK</option>
-                      <option value="SGD">SGD</option><option value="THB">THB</option><option value="TRY">TRY</option>
-                      <option value="ZAR">ZAR</option>
                     </select>
                   </div>
                   <button class="export-item" id="btn-tax-xlsx">🧾 Pre-Tax Report (XLSX)</button>
@@ -213,7 +207,12 @@
              <table class="glass-table" id="transactions-table">
                 <thead>
                    <tr>
-                     <th data-sort="Item" style="width: 35%;">Item<span class="sort-icon"></span></th>
+                     <th data-sort="Item" style="width: 35%;">
+                       <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                         <span>Item<span class="sort-icon"></span></span>
+                         <input type="text" id="table-search" class="glass-input" placeholder="Search..." style="flex: 1; font-size: 13px; padding: 6px 10px; font-weight: normal; margin: 0; min-width: 0;">
+                       </div>
+                     </th>
                      <th data-sort="Buy Date" style="width: 15%;">Acquired<span class="sort-icon"></span></th>
                      <th data-sort="Buy Price ($)" class="num-col" style="width: 10%;">Buy Price<span class="sort-icon"></span></th>
                      <th data-sort="Sell Date" style="width: 15%;">Sold<span class="sort-icon"></span></th>

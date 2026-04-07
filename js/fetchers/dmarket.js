@@ -3,6 +3,7 @@ import { Transaction } from "./base.js";
 export class DMarketFetcher extends BaseFetcher {
   constructor() {
     super("DMarket");
+    this.p2pHistoryCache = null;
   }
 
   async checkSession() {
@@ -87,18 +88,109 @@ export class DMarketFetcher extends BaseFetcher {
     return items;
   }
 
-  async getSales() {
-    return this.getHistory("sell");
+  async getP2PHistory() {
+    if (this.p2pHistoryCache) return await this.p2pHistoryCache;
+
+    this.p2pHistoryCache = (async () => {
+      let items = [];
+      let offset = 0;
+      const limit = 50;
+
+      while (true) {
+        const url = `https://api.dmarket.com/feed/v1/feed?operation_types=P2pSell,P2pBuy&game_types=steam,ethereum&offset=${offset}&limit=${limit}`;
+
+        let data;
+        try {
+          data = await this.fetchWithAuth(url);
+        } catch (e) {
+          break;
+        }
+
+        if (!data || !data.objects || data.objects.length === 0) break;
+
+        for (const obj of data.objects) {
+          if (obj.status?.code !== "FundsTransferSuccess") continue;
+
+          const isSell = obj.operationType === "P2pSell";
+          const createdDate = new Date(obj.createdAt * 1000);
+          let verifiedDate = null;
+          if (obj.updatedAt) {
+            verifiedDate = new Date(obj.updatedAt * 1000);
+          }
+
+          if (!obj.operationObjects) continue;
+
+          for (const opObj of obj.operationObjects) {
+            const priceAmount = parseFloat(opObj.meta?.price?.amount || 0);
+            const feeAmount = parseFloat(opObj.meta?.fee?.amount || 0);
+            let itemPrice = priceAmount;
+
+            if (isSell) {
+              itemPrice -= feeAmount;
+            }
+
+            const dynamicProps = opObj.meta?.asset?.meta?.dynamicProperties || {};
+            let floatVal = 0;
+            if (dynamicProps.floatValue !== undefined) {
+              floatVal = parseFloat(dynamicProps.floatValue);
+            }
+            
+            let pattern = -1;
+            if (dynamicProps.paintSeed !== undefined) {
+              pattern = parseInt(dynamicProps.paintSeed);
+            }
+
+            items.push(
+              new Transaction({
+                source: "DMarket",
+                type: isSell ? "SELL" : "BUY",
+                tx_id: `${obj.id}_${opObj.id}`,
+                asset_id: opObj.id,
+                item_name: opObj.title,
+                price: itemPrice,
+                currency: opObj.meta?.price?.currency || "USD",
+                created_at: createdDate,
+                verified_at: verifiedDate,
+                float_val: floatVal,
+                pattern: pattern,
+                phase: dynamicProps.phaseTitle,
+              }),
+            );
+          }
+        }
+
+        offset += limit;
+        if (data.objects.length < limit) break;
+        await this.sleep(200);
+      }
+      return items;
+    })();
+
+    return await this.p2pHistoryCache;
   }
+
+  async getSales() {
+    const [botSales, p2p] = await Promise.all([
+      this.getHistory("sell"),
+      this.getP2PHistory()
+    ]);
+    const p2pSales = p2p.filter(tx => tx.type === "SELL");
+    return [...botSales, ...p2pSales];
+  }
+
   async getBuys() {
-    return this.getHistory("buy");
+    const [botBuys, p2p] = await Promise.all([
+      this.getHistory("buy"),
+      this.getP2PHistory()
+    ]);
+    const p2pBuys = p2p.filter(tx => tx.type === "BUY");
+    return [...botBuys, ...p2pBuys];
   }
 
   async getInventory() {
     try {
       const limit = 100;
       const gameId = "a8db"; // CS2 (CS:GO)
-      const allItems = [];
 
       const fetchAllPages = async (baseUrl) => {
         let cursor = "";

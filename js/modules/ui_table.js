@@ -19,6 +19,8 @@ export function initTable(state) {
   document.getElementById("report-start-month")?.addEventListener("change", () => { cachedRowsData = null; cachedTRs.clear(); renderTable(state); });
   document.getElementById("report-end-month")?.addEventListener("change", () => { cachedRowsData = null; cachedTRs.clear(); renderTable(state); });
   document.getElementById("include-buys-checkbox")?.addEventListener("change", () => { cachedRowsData = null; cachedTRs.clear(); renderTable(state); });
+  document.getElementById("table-search")?.addEventListener("click", (ev) => ev.stopPropagation());
+  document.getElementById("table-search")?.addEventListener("input", () => { cachedTRs.clear(); renderTable(state, true); });
 
   // GPU: disable hover/transition during scroll
   const scrollContainer = document.querySelector('.table-scroll-container');
@@ -286,10 +288,13 @@ function updateStatsBar(rowsData) {
   let earliestDate = Infinity, latestDate = -Infinity;
   let totalDealTimeMs = 0;
 
+  let totalRealizedBuyPrice = 0;
+
   for (const row of rowsData) {
     if (row.bPriceUsd > 0 && row.sPriceUsd > 0) {
        realizedDeals++;
        totalRealizedProfit += row.profitUsd;
+       totalRealizedBuyPrice += row.bPriceUsd;
        
        if (row.profitUsd > maxProfit) maxProfit = row.profitUsd;
        if (row.profitUsd < minProfit) minProfit = row.profitUsd;
@@ -332,6 +337,13 @@ function updateStatsBar(rowsData) {
     const avgProfit = totalRealizedProfit / realizedDeals;
     statAvg.textContent = (avgProfit >= 0 ? "+$" : "-$") + Math.abs(avgProfit).toFixed(2);
     statAvg.className = "stat-value " + (avgProfit > 0 ? "pos-profit" : (avgProfit < 0 ? "neg-profit" : "zero-profit"));
+    
+    const statAvgPerc = document.getElementById("stat-avg-perc");
+    if (statAvgPerc) {
+      const avgPerc = totalRealizedBuyPrice > 0 ? (totalRealizedProfit / totalRealizedBuyPrice) * 100 : 0;
+      statAvgPerc.textContent = (avgPerc >= 0 ? "+" : "") + avgPerc.toFixed(2) + "%";
+      statAvgPerc.className = "stat-sub " + (avgPerc > 0 ? "pos-profit" : (avgPerc < 0 ? "neg-profit" : "zero-profit"));
+    }
 
     if (statAvgTime) {
       if (totalDealTimeMs > 0 && realizedDeals > 0) {
@@ -368,7 +380,8 @@ function updateStatsBar(rowsData) {
     }
     
     const avgDay = totalRealizedProfit / daysDiff;
-    const avgWeek = avgDay * 7;
+    const weeksDiff = (daysDiff < 7) ? 1 : (daysDiff / 7);
+    const avgWeek = totalRealizedProfit / weeksDiff;
     const avgMonth = totalRealizedProfit / monthsDiff;
 
     statAvgDay.textContent = (avgDay >= 0 ? "+$" : "-$") + Math.abs(avgDay).toFixed(0) + "/24h";
@@ -550,8 +563,14 @@ export async function renderTable(state, preserveScroll = false) {
 
   // FAST PATH: cached data (sort/page change only)
   if (cachedRowsData) {
-    sortRows(cachedRowsData);
-    renderRows(cachedRowsData, tbody);
+    const searchVal = document.getElementById("table-search")?.value.toLowerCase().trim() || "";
+    let dataToRender = searchVal ? cachedRowsData.filter(r => r.item.toLowerCase().includes(searchVal)) : cachedRowsData;
+
+    cachedTotalProfit = 0;
+    for (const row of dataToRender) cachedTotalProfit += row.profitUsd;
+
+    sortRows(dataToRender);
+    renderRows(dataToRender, tbody);
 
     if (!preserveScroll) {
       const scrollContainer = document.querySelector('.table-scroll-container');
@@ -560,6 +579,8 @@ export async function renderTable(state, preserveScroll = false) {
 
     profitBadge.textContent = (cachedTotalProfit >= 0 ? "+$" : "-$") + Math.abs(cachedTotalProfit).toFixed(2);
     profitBadge.className = "profit-badge " + (cachedTotalProfit >= 0 ? "pos" : "neg");
+    
+    updateStatsBar(dataToRender);
     return;
   }
 
@@ -630,20 +651,22 @@ export async function renderTable(state, preserveScroll = false) {
   });
 
   cachedRowsData = rowsData;
-  cachedTotalProfit = 0;
-  for (const row of rowsData) cachedTotalProfit += row.profitUsd;
+  const searchVal = document.getElementById("table-search")?.value.toLowerCase().trim() || "";
+  let dataToRender = searchVal ? cachedRowsData.filter(r => r.item.toLowerCase().includes(searchVal)) : cachedRowsData;
 
-  sortRows(rowsData);
-  renderRows(rowsData, tbody);
+  cachedTotalProfit = 0;
+  for (const row of dataToRender) cachedTotalProfit += row.profitUsd;
+
+  sortRows(dataToRender);
+  renderRows(dataToRender, tbody);
 
   if (!preserveScroll) {
     const scrollContainer = document.querySelector('.table-scroll-container');
     if (scrollContainer) scrollContainer.scrollTop = 0;
   }
 
-
   profitBadge.textContent = (cachedTotalProfit >= 0 ? "+$" : "-$") + Math.abs(cachedTotalProfit).toFixed(2);
   profitBadge.className = "profit-badge " + (cachedTotalProfit >= 0 ? "pos" : "neg");
   
-  updateStatsBar(cachedRowsData);
+  updateStatsBar(dataToRender);
 }

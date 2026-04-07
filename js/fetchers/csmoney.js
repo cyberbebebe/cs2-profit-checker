@@ -42,15 +42,21 @@ export class CSMoneyFetcher extends BaseFetcher {
       });
       const text = await resp.text();
 
-      // "marketBalance"
-      const balanceMatch = text.match(/"marketBalance":\s*([\d.]+)/);
-      const balance = balanceMatch ? parseFloat(balanceMatch[1]) : 0;
+      const depositMatch = text.match(/"depositLimit":\s*"?([\d.]+)"?/);
+      const depositLimit = depositMatch ? parseFloat(depositMatch[1]) : 0;
 
-      // p2pLimit
+      const isMatch = text.match(/"ISLimit":\s*"?([\d.]+)"?/);
+      const isLimit = isMatch ? parseFloat(isMatch[1]) : 0;
+
       const p2pMatch = text.match(/"p2pLimit":\s*"?([\d.]+)"?/);
-      const p2p = p2pMatch ? parseFloat(p2pMatch[1]) : 0;
+      const p2pLimit = p2pMatch ? parseFloat(p2pMatch[1]) : 0;
 
-      return { amount: balance + p2p, currency: "USD" };
+      const cashoutMatch = text.match(/"cashoutLimit":\s*"?([\d.]+)"?/);
+      const cashoutLimit = cashoutMatch ? parseFloat(cashoutMatch[1]) : 0;
+
+      const total = depositLimit + isLimit + p2pLimit + cashoutLimit;
+
+      return { amount: total, currency: "USD" };
     } catch (e) {
       console.error("[CSMoney] Balance error:", e);
       return { amount: 0, currency: "USD" };
