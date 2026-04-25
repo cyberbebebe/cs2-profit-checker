@@ -45,7 +45,7 @@ This extension operates entirely locally on your PC. I don't know how to send da
    - Steam "Item(s)-for-Item(s)" trades - no metadata, will take to long to fetch. (*almost unimplementable*).
    - CSMoney Trade - Not tested personally, seems correct. However, csmoney deleted trades made before 2025.
    - Skinport: Virtual Inventory/Store - no, Sales - not tested personally, please verify, if not correct - DM me.
-   - SkinSwap: Trade and Balance - i do not trade/instant sale here. **Balance here does not sum up to Total Balance.**
+   - SkinSwap: Trade and Balance - i do not trade/instant sale here. Balance here is calculated as \$0.
    - Other marketplaces - too many exist, I don't use every, some have inconvenient history format to fetch.
 
 3. **Commodity & Trades matching (Profit report & Dashboard)**:
