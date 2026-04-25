@@ -45,7 +45,7 @@ export class CSMoneyFetcher extends BaseFetcher {
       const depositMatch = text.match(/"depositLimit":\s*"?([\d.]+)"?/);
       const depositLimit = depositMatch ? parseFloat(depositMatch[1]) : 0;
 
-      const isMatch = text.match(/"ISLimit":\s*"?([\d.]+)"?/);
+      const isMatch = text.match(/"instantSellLimit":\s*"?([\d.]+)"?/);
       const isLimit = isMatch ? parseFloat(isMatch[1]) : 0;
 
       const p2pMatch = text.match(/"p2pLimit":\s*"?([\d.]+)"?/);

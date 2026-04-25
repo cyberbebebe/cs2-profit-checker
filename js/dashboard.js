@@ -7,6 +7,7 @@ import { YoupinFetcher } from "./fetchers/youpin.js";
 import { SkinportFetcher } from "./fetchers/skinport.js";
 import { Buff163Fetcher } from "./fetchers/buff163.js";
 import { SteamFetcher } from "./fetchers/steam.js";
+import { SkinSwapFetcher } from "./fetchers/skinswap.js";
 
 import { initToggles } from "./modules/ui_toggles.js";
 import { initSessionCheck } from "./modules/ui_sessions.js";
@@ -28,6 +29,7 @@ const state = {
     new Buff163Fetcher(),
     new SteamFetcher(),
     new YoupinFetcher(),
+    new SkinSwapFetcher(),
   ],
 };
 
