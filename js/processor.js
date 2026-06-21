@@ -1,21 +1,26 @@
 import { generateSignature, log } from "./utils.js";
 
 // Helper to get a comparable date for matching logic
-// CreatedAt > Date.now()
 function getTxDate(tx) {
   if (tx.created_at) return tx.created_at;
-  return new Date(0); // Critical moment with no buy time, should not happen
+  return new Date(0);
 }
 
 export function matchTransactions(sales, buys) {
-  // 1. Organize Buys into a Lookup Map (Signature -> Array of Buys)
-  const buyMap = {};
-  const buyAssetMap = {};
+  // 1. Organize Buys into Lookup Maps
+  const buyFloatMap = {}; // name|float -> Array of Buys (for float_val > 0)
+  const buyNameMap = {};  // name -> Array of Buys (for float_val === 0)
+  const buyAssetMap = {}; // AssetID -> Array of Buys (for DMarket)
 
   buys.forEach((b) => {
-    const sig = generateSignature(b.item_name, b.float_val, b.pattern);
-    if (!buyMap[sig]) buyMap[sig] = [];
-    buyMap[sig].push(b);
+    if (b.float_val > 0) {
+      const floatSig = `${b.item_name}|${parseFloat(b.float_val).toFixed(12)}`;
+      if (!buyFloatMap[floatSig]) buyFloatMap[floatSig] = [];
+      buyFloatMap[floatSig].push(b);
+    } else {
+      if (!buyNameMap[b.item_name]) buyNameMap[b.item_name] = [];
+      buyNameMap[b.item_name].push(b);
+    }
 
     // Map by AssetID (Specific for DMarket re-match)
     if (b.source === "DMarket" && b.asset_id) {
@@ -24,9 +29,12 @@ export function matchTransactions(sales, buys) {
     }
   });
 
-  // 2. Sort Buys by Date (NEWEST first)
-  for (let sig in buyMap) {
-    buyMap[sig].sort((a, b) => getTxDate(b) - getTxDate(a));
+  // 2. Sort Buys by Date (NEWEST first, for LIFO matching)
+  for (let key in buyFloatMap) {
+    buyFloatMap[key].sort((a, b) => getTxDate(b) - getTxDate(a));
+  }
+  for (let key in buyNameMap) {
+    buyNameMap[key].sort((a, b) => getTxDate(b) - getTxDate(a));
   }
   for (let aid in buyAssetMap) {
     buyAssetMap[aid].sort((a, b) => getTxDate(b) - getTxDate(a));
@@ -34,32 +42,44 @@ export function matchTransactions(sales, buys) {
 
   const results = [];
 
-  // 3. Process Sales sequentially
+  // 3. Process Sales sequentially (maintaining original LIFO order of sales array)
   for (const sale of sales) {
-    const sig = generateSignature(sale.item_name, sale.float_val, sale.pattern);
-    let potentialBuys = buyMap[sig] || [];
-
     let match = null;
     let matchIndex = -1;
     let matchType = "none";
 
     const saleDate = getTxDate(sale);
 
-    // A: Metadata Match
-    const hasMeta = sale.float_val > 0 || (sale.pattern !== -1 && sale.pattern !== undefined);
-
-    if (hasMeta && potentialBuys.length > 0) {
-      for (let i = 0; i < potentialBuys.length; i++) {
-        if (getTxDate(potentialBuys[i]) <= saleDate) {
-          matchIndex = i;
-          match = potentialBuys[i];
-          matchType = "meta";
-          break;
+    // A: Try unique float matching (if float > 0)
+    if (sale.float_val > 0) {
+      const floatSig = `${sale.item_name}|${parseFloat(sale.float_val).toFixed(12)}`;
+      const potentialBuys = buyFloatMap[floatSig] || [];
+      if (potentialBuys.length > 0) {
+        for (let i = 0; i < potentialBuys.length; i++) {
+          if (getTxDate(potentialBuys[i]) <= saleDate) {
+            matchIndex = i;
+            match = potentialBuys[i];
+            matchType = "float";
+            break;
+          }
+        }
+      }
+    } else {
+      // B: Try name-only matching for items with no float (like cases, stickers)
+      const potentialBuys = buyNameMap[sale.item_name] || [];
+      if (potentialBuys.length > 0) {
+        for (let i = 0; i < potentialBuys.length; i++) {
+          if (getTxDate(potentialBuys[i]) <= saleDate) {
+            matchIndex = i;
+            match = potentialBuys[i];
+            matchType = "name";
+            break;
+          }
         }
       }
     }
 
-    // B: DMarket AssetID Fallback
+    // C: DMarket AssetID Fallback (if still no match)
     if (!match && sale.source === "DMarket" && sale.asset_id) {
       const assetBuys = buyAssetMap[sale.asset_id];
       if (assetBuys && assetBuys.length > 0) {
@@ -67,30 +87,52 @@ export function matchTransactions(sales, buys) {
           if (getTxDate(assetBuys[i]) <= saleDate) {
             match = assetBuys[i];
             matchType = "asset_id";
-
-            // Clean up from main map to avoid double usage
-            const matchSig = generateSignature(match.item_name, match.float_val, match.pattern);
-            const mainList = buyMap[matchSig];
-            if (mainList) {
-              const idx = mainList.indexOf(match);
-              if (idx !== -1) mainList.splice(idx, 1);
-            }
             break;
           }
         }
       }
     }
 
-    // Processing Match
+    // Processing Match & Cleanup
     if (match) {
-      if (matchType === "meta") {
-        potentialBuys.splice(matchIndex, 1);
+      // Clean up from buyFloatMap
+      if (match.float_val > 0) {
+        const floatSig = `${match.item_name}|${parseFloat(match.float_val).toFixed(12)}`;
+        const floatList = buyFloatMap[floatSig];
+        if (floatList) {
+          const idx = floatList.indexOf(match);
+          if (idx !== -1) floatList.splice(idx, 1);
+        }
+      } else {
+        // Clean up from buyNameMap
+        const nameList = buyNameMap[match.item_name];
+        if (nameList) {
+          const idx = nameList.indexOf(match);
+          if (idx !== -1) nameList.splice(idx, 1);
+        }
+      }
+
+      // Clean up from buyAssetMap
+      if (match.source === "DMarket" && match.asset_id) {
+        const assetList = buyAssetMap[match.asset_id];
+        if (assetList) {
+          const idx = assetList.indexOf(match);
+          if (idx !== -1) assetList.splice(idx, 1);
+        }
       }
     }
 
     // Construct Result
     const buyPrice = match ? match.price : 0;
     const profit = sale.price - buyPrice;
+
+    // Use merged pattern/phase/float from whichever transaction has it
+    const mergedFloat = sale.float_val || (match ? match.float_val : 0);
+    const mergedPattern = (sale.pattern !== -1 && sale.pattern !== undefined) ? sale.pattern : (match && match.pattern !== undefined ? match.pattern : -1);
+    const mergedPhase = sale.phase || (match ? match.phase : "");
+
+    // Generate signature to preserve interface contract
+    const sig = generateSignature(sale.item_name, mergedFloat, mergedPattern);
 
     results.push({
       item_name: sale.item_name,
@@ -117,9 +159,9 @@ export function matchTransactions(sales, buys) {
       profit_percent: match && match.price > 0 ? ((profit / match.price) * 100).toFixed(2) : 0,
 
       // Meta
-      float_val: sale.float_val,
-      pattern: sale.pattern,
-      phase: sale.phase,
+      float_val: mergedFloat,
+      pattern: mergedPattern,
+      phase: mergedPhase,
       match_type: matchType,
     });
   }
@@ -129,22 +171,19 @@ export function matchTransactions(sales, buys) {
 
 export function matchInventory(inventoryItems, allBuys) {
   // 1. Indexing
-  const buyMap = {}; // Signature -> [Buys]
+  const buyFloatMap = {}; // FloatSignature -> [Buys]
+  const buyNameMap = {};  // name -> [Buys]
   const buyAssetMap = {}; // AssetID -> [Buys] (for DMarket)
 
-  // (Signature)
-  const generateSignature = (name, floatVal, pattern) => {
-    if (!floatVal || floatVal === 0) return name;
-    // Round float
-    const shortFloat = parseFloat(floatVal).toFixed(10);
-    const pat = pattern !== undefined && pattern !== -1 ? `-${pattern}` : "";
-    return `${name}-${shortFloat}${pat}`;
-  };
-
   allBuys.forEach((b) => {
-    const sig = generateSignature(b.item_name, b.float_val, b.pattern);
-    if (!buyMap[sig]) buyMap[sig] = [];
-    buyMap[sig].push(b);
+    if (b.float_val > 0) {
+      const floatSig = `${b.item_name}-${parseFloat(b.float_val).toFixed(12)}`;
+      if (!buyFloatMap[floatSig]) buyFloatMap[floatSig] = [];
+      buyFloatMap[floatSig].push(b);
+    } else {
+      if (!buyNameMap[b.item_name]) buyNameMap[b.item_name] = [];
+      buyNameMap[b.item_name].push(b);
+    }
 
     if (b.asset_id) {
       if (!buyAssetMap[b.asset_id]) buyAssetMap[b.asset_id] = [];
@@ -155,7 +194,8 @@ export function matchInventory(inventoryItems, allBuys) {
   // Sort by newest
   const sortByDate = (list) =>
     list.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-  for (let k in buyMap) sortByDate(buyMap[k]);
+  for (let k in buyFloatMap) sortByDate(buyFloatMap[k]);
+  for (let k in buyNameMap) sortByDate(buyNameMap[k]);
   for (let k in buyAssetMap) sortByDate(buyAssetMap[k]);
 
   // 2. Inventory matching
@@ -167,22 +207,25 @@ export function matchInventory(inventoryItems, allBuys) {
       match = buyAssetMap[item.asset_id][0]; // Newest
     }
 
-    // B: Signatures (Float + Pattern)
-    if (!match) {
-      const sig = generateSignature(
-        item.item_name,
-        item.float_val,
-        item.pattern,
-      );
-      if (buyMap[sig]) {
-        match = buyMap[sig][0];
+    // B: Float-based matching (if float > 0)
+    if (!match && item.float_val > 0) {
+      const floatSig = `${item.item_name}-${parseFloat(item.float_val).toFixed(12)}`;
+      if (buyFloatMap[floatSig]) {
+        match = buyFloatMap[floatSig][0];
+      }
+    }
+
+    // C: Name-based matching (if float === 0)
+    if (!match && (!item.float_val || item.float_val === 0)) {
+      if (buyNameMap[item.item_name]) {
+        match = buyNameMap[item.item_name][0];
       }
     }
 
     return {
       item_name: item.item_name,
-      float_val: item.float_val,
-      pattern: item.pattern,
+      float_val: item.float_val || (match ? match.float_val : 0),
+      pattern: (item.pattern !== -1 && item.pattern !== undefined) ? item.pattern : (match && match.pattern !== undefined ? match.pattern : -1),
       source: item.source,
 
       // Buy info
