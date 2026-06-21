@@ -1,14 +1,9 @@
 {
   "manifest_version": 3,
   "name": "CS2 Profit Checker & Tax Manager",
-  "version": "2.2",
+  "version": "2.2.0",
   "description": "CS2 marketplaces transactions aggregator. Creates Profit and Tax-ready reports.",
-  "permissions": [
-    "storage",
-    "unlimitedStorage",
-    "cookies",
-    "scripting"
-  ],
+  "permissions": ["storage", "unlimitedStorage", "cookies", "scripting"],
   "host_permissions": [
     "*://*.dmarket.com/*",
     "*://*.csfloat.com/*",
