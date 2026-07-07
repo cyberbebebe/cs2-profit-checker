@@ -67,6 +67,12 @@
             <span class="pill-name">Youpin</span>
           </label>
 
+          <label class="session-pill" id="card-c5game" title="C5Game">
+            <input type="checkbox" id="toggle-c5game" checked class="hidden-check" />
+            <span class="status-dot status-unknown"></span>
+            <span class="pill-name">C5Game</span>
+          </label>
+
           <label class="session-pill" id="card-skinswap" title="SkinSwap">
             <input type="checkbox" id="toggle-skinswap" checked class="hidden-check" />
             <span class="status-dot status-unknown"></span>
@@ -106,6 +112,18 @@
             <input type="checkbox" id="toggle-csmoneybot" checked class="hidden-check" />
             <span class="status-dot status-unknown"></span>
             <span class="pill-name">CSMoneyBot</span>
+          </label>
+
+          <label class="session-pill" id="card-avan" title="Avan Market">
+            <input type="checkbox" id="toggle-avan" checked class="hidden-check" />
+            <span class="status-dot status-unknown"></span>
+            <span class="pill-name">Avan</span>
+          </label>
+
+          <label class="session-pill" id="card-aim" title="Aim Market">
+            <input type="checkbox" id="toggle-aim" checked class="hidden-check" />
+            <span class="status-dot status-unknown"></span>
+            <span class="pill-name">Aim</span>
           </label>
 
           <label class="session-pill" id="card-steam" title="Steam">
@@ -232,6 +250,10 @@
                 <div class="export-divider"></div>
                 <button class="export-item export-item-muted" id="btn-profit-json">📋 Raw Data (JSON)</button>
                 <button class="export-item export-item-muted" id="btn-tax-json">📋 Tax Data (JSON)</button>
+                <div class="export-divider"></div>
+                <button class="export-item" id="btn-save-session">💾 Save Session (JSON)</button>
+                <button class="export-item" id="btn-load-session">📂 Load Session (JSON)</button>
+                <input type="file" id="input-load-session" accept="application/json,.json" hidden />
               </div>
             </div>
           </div>
@@ -241,7 +263,7 @@
           <table class="glass-table" id="transactions-table">
             <thead>
               <tr>
-                <th data-sort="Item" style="width: 35%;">
+                <th data-sort="Item" style="width: 26%;">
                   <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                     <span>Item<span class="sort-icon"></span></span>
                     <input type="text" id="table-search" class="glass-input" placeholder="Search..."
@@ -257,11 +279,13 @@
                 <th data-sort="Profit ($)" class="num-col" style="width: 10%;">Profit<span class="sort-icon"></span>
                 </th>
                 <th data-sort="Profit %" class="num-col" style="width: 10%;">ROI %<span class="sort-icon"></span></th>
+                <th data-sort="Days Held" class="num-col" style="width: 8%;" title="Sold − Acquired, in days">Days Held<span class="sort-icon"></span></th>
+                <th data-sort="ROI/Day" class="num-col" style="width: 8%;" title="ROI % per day held">ROI/Day<span class="sort-icon"></span></th>
               </tr>
             </thead>
             <tbody id="table-body">
               <tr class="empty-row">
-                <td colspan="7">No synced data for this period. Click Sync Data to begin.</td>
+                <td colspan="9">No synced data for this period. Click Sync Data to begin.</td>
               </tr>
             </tbody>
           </table>
@@ -288,6 +312,27 @@
     </main>
 
   </div>
+
+  <!-- Manual match modal: link a sale to a specific purchase -->
+  <div id="manual-match-modal" class="mm-backdrop">
+    <div class="mm-dialog">
+      <div class="mm-header">
+        <div>
+          <div class="mm-title">Match a purchase to this sale</div>
+          <div class="mm-subtitle" id="mm-item-name"></div>
+        </div>
+        <button id="mm-close" class="mm-close-btn" title="Close">✕</button>
+      </div>
+      <div class="mm-toolbar">
+        <label class="mm-checkbox">
+          <input type="checkbox" id="mm-show-all" /> Show all items (not just this name)
+        </label>
+        <button id="mm-clear" class="mm-clear-btn">Clear match</button>
+      </div>
+      <div id="mm-list" class="mm-list"></div>
+    </div>
+  </div>
+
   <script type="module" src="js/dashboard.js"></script>
 </body>
 

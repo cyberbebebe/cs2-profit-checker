@@ -1,15 +1,21 @@
 {
   "manifest_version": 3,
   "name": "CS2 Profit Checker & Tax Manager",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "CS2 marketplaces transactions aggregator. Creates Profit and Tax-ready reports.",
-  "permissions": ["storage", "unlimitedStorage", "cookies", "scripting"],
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "cookies",
+    "scripting"
+  ],
   "host_permissions": [
     "*://*.dmarket.com/*",
     "*://*.csfloat.com/*",
     "*://*.buff.market/*",
     "*://*.cs.money/*",
     "*://*.youpin898.com/*",
+    "*://*.c5game.com/*",
     "*://skinport.com/*",
     "*://buff.163.com/*",
     "*://steamcommunity.com/*",
@@ -17,7 +23,11 @@
     "*://api.frankfurter.dev/*",
     "*://*.skinswap.com/*",
     "*://*.skins.com/*",
-    "*://*.skin.place/*"
+    "*://*.skin.place/*",
+    "*://avan.market/*",
+    "*://*.avan.market/*",
+    "*://aim.market/*",
+    "*://*.aim.market/*"
   ],
   "icons": {
     "16": "icons/icon16.png",

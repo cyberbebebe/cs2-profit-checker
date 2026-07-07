@@ -79,7 +79,6 @@ export class Buff163Fetcher extends BaseFetcher {
       if (items.length === 0) break;
 
       for (const raw of items) {
-        if (raw.state !== "SUCCESS") continue;
 
         const goodsId = raw.goods_id;
         const info = goodsInfos[goodsId];

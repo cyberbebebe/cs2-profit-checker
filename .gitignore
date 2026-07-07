@@ -1,15 +1,22 @@
+# Personal / local data — never commit
+# The extension persists fetched transactions in chrome.storage.local (inside the
+# browser profile, not this repo). These are the only local data files that can
+# end up here — keep them out of version control.
+abc.json
+*.local.json
+*.dump.json
+Profit_Report_*.xlsx
+Tax_Report_*.xlsx
 
+# Dependencies / build
+node_modules/
+
+# OS / editor cruft
 .DS_Store
 Thumbs.db
-desktop.ini
-
-*.log
-tmp/
-temp/
-
-.vscode/
-.idea/
 *.swp
+.idea/
+.vscode/
 
-*.zip
-*.crx
+# Claude Code local settings
+.claude/settings.local.json

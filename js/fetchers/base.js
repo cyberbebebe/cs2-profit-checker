@@ -1,3 +1,12 @@
+// Parse a value into a valid Date, or return `fallback` when it can't be.
+// Guards against `chrome.storage.local` losing Date objects (they come back as
+// `{}`) and against any other unparseable value producing an `Invalid Date`.
+function toValidDate(value, fallback) {
+  if (value === null || value === undefined || value === "") return fallback;
+  const d = value instanceof Date ? value : new Date(value);
+  return isNaN(d.getTime()) ? fallback : d;
+}
+
 export class Transaction {
   constructor(data) {
     this.source = data.source; // "DMarket", "CSFloat"...
@@ -9,8 +18,8 @@ export class Transaction {
     this.price = parseFloat(data.price || 0);
     this.currency = data.currency; // "USD", "CNY"...
 
-    this.created_at = data.created_at ? new Date(data.created_at) : new Date();
-    this.verified_at = data.verified_at ? new Date(data.verified_at) : null;
+    this.created_at = toValidDate(data.created_at, new Date());
+    this.verified_at = toValidDate(data.verified_at, null);
 
     // Metadata
     this.float_val =

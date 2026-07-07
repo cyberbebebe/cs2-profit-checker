@@ -6,18 +6,32 @@ function getTxDate(tx) {
   return new Date(0);
 }
 
+// Steam/CS2 default trade hold is 7 days; add a 1-hour safety margin.
+// A purchase made within this window is still trade-locked and therefore cannot
+// have been sold yet, so it must not be used as a name-match candidate.
+export const TRADE_HOLD_MS = 7 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000;
+
+// Skin markets that don't report float/pattern (their skin sales carry no
+// fingerprint, so they can only be matched to a float-bearing purchase by name).
+const FLOATLESS_SOURCES = new Set(["Aim", "Avan"]);
+
 export function matchTransactions(sales, buys) {
   // 1. Organize Buys into Lookup Maps
   const buyFloatMap = {}; // name|float -> Array of Buys (for float_val > 0)
-  const buyNameMap = {};  // name -> Array of Buys (for float_val === 0)
   const buyAssetMap = {}; // AssetID -> Array of Buys (for DMarket)
+  const buyNameMap = {}; // name -> Array of Buys (for "unknown" no-float items)
+  const buyFloatByName = {}; // name -> Array of float-bearing Buys (fallback index)
 
   buys.forEach((b) => {
     if (b.float_val > 0) {
       const floatSig = `${b.item_name}|${parseFloat(b.float_val).toFixed(12)}`;
       if (!buyFloatMap[floatSig]) buyFloatMap[floatSig] = [];
       buyFloatMap[floatSig].push(b);
+      if (!buyFloatByName[b.item_name]) buyFloatByName[b.item_name] = [];
+      buyFloatByName[b.item_name].push(b);
     } else {
+      // No float — "unknown" fungible items (cases, agents, stickers, ...).
+      // Trade-hold eligibility is enforced per sale/buy pair during matching.
       if (!buyNameMap[b.item_name]) buyNameMap[b.item_name] = [];
       buyNameMap[b.item_name].push(b);
     }
@@ -29,114 +43,109 @@ export function matchTransactions(sales, buys) {
     }
   });
 
-  // 2. Sort Buys by Date (NEWEST first, for LIFO matching)
-  for (let key in buyFloatMap) {
-    buyFloatMap[key].sort((a, b) => getTxDate(b) - getTxDate(a));
-  }
-  for (let key in buyNameMap) {
-    buyNameMap[key].sort((a, b) => getTxDate(b) - getTxDate(a));
-  }
-  for (let aid in buyAssetMap) {
-    buyAssetMap[aid].sort((a, b) => getTxDate(b) - getTxDate(a));
-  }
+  // 2. Sort Buys by Date (OLDEST first) — FIFO: first bought is first sold.
+  const byOldest = (a, b) => getTxDate(a) - getTxDate(b);
+  for (let key in buyFloatMap) buyFloatMap[key].sort(byOldest);
+  for (let aid in buyAssetMap) buyAssetMap[aid].sort(byOldest);
+  for (let name in buyNameMap) buyNameMap[name].sort(byOldest);
+  for (let name in buyFloatByName) buyFloatByName[name].sort(byOldest);
 
-  const results = [];
+  // Track consumed purchases without mutating the shared buy objects (this
+  // function is re-run on every render).
+  const used = new Set();
 
-  // 3. Process Sales sequentially (maintaining original LIFO order of sales array)
-  for (const sale of sales) {
+  // First still-available buy in `list` that satisfies the date rule. Buys are
+  // oldest-first, so this is FIFO (earliest eligible purchase).
+  const findFirst = (list, saleTime, requireHold) => {
+    if (!list) return null;
+    for (const b of list) {
+      if (used.has(b)) continue;
+      const bt = getTxDate(b).getTime();
+      const ok = requireHold ? bt + TRADE_HOLD_MS <= saleTime : bt <= saleTime;
+      if (ok) return b;
+    }
+    return null;
+  };
+
+  // 3. Process Sales OLDEST first so the FIFO queue resolves correctly.
+  const orderedSales = sales.slice().sort(byOldest);
+  const decided = []; // { sale, match, matchType }
+  const fallbackQueue = []; // float-less skin sales deferred to pass 2
+
+  for (const sale of orderedSales) {
     let match = null;
-    let matchIndex = -1;
     let matchType = "none";
+    const saleTime = getTxDate(sale).getTime();
 
-    const saleDate = getTxDate(sale);
-
-    // A: Try unique float matching (if float > 0)
+    // A: Unique float matching (exact fingerprint)
     if (sale.float_val > 0) {
       const floatSig = `${sale.item_name}|${parseFloat(sale.float_val).toFixed(12)}`;
-      const potentialBuys = buyFloatMap[floatSig] || [];
-      if (potentialBuys.length > 0) {
-        for (let i = 0; i < potentialBuys.length; i++) {
-          if (getTxDate(potentialBuys[i]) <= saleDate) {
-            matchIndex = i;
-            match = potentialBuys[i];
-            matchType = "float";
-            break;
-          }
-        }
-      }
-    } else {
-      // B: Try name-only matching for items with no float (like cases, stickers)
-      const potentialBuys = buyNameMap[sale.item_name] || [];
-      if (potentialBuys.length > 0) {
-        for (let i = 0; i < potentialBuys.length; i++) {
-          if (getTxDate(potentialBuys[i]) <= saleDate) {
-            matchIndex = i;
-            match = potentialBuys[i];
-            matchType = "name";
-            break;
-          }
-        }
-      }
+      match = findFirst(buyFloatMap[floatSig], saleTime, false);
+      if (match) matchType = "float";
     }
 
-    // C: DMarket AssetID Fallback (if still no match)
+    // B: DMarket AssetID fallback
     if (!match && sale.source === "DMarket" && sale.asset_id) {
-      const assetBuys = buyAssetMap[sale.asset_id];
-      if (assetBuys && assetBuys.length > 0) {
-        for (let i = 0; i < assetBuys.length; i++) {
-          if (getTxDate(assetBuys[i]) <= saleDate) {
-            match = assetBuys[i];
-            matchType = "asset_id";
-            break;
-          }
-        }
-      }
+      match = findFirst(buyAssetMap[sale.asset_id], saleTime, false);
+      if (match) matchType = "asset_id";
     }
 
-    // Processing Match & Cleanup
+    // C: Name-based FIFO matching for no-float items (cases, agents…), with the
+    // per-pair trade-hold: sale_date >= buy_date + TRADE_HOLD_MS.
+    if (!match && !(sale.float_val > 0)) {
+      match = findFirst(buyNameMap[sale.item_name], saleTime, true);
+      if (match) matchType = "name";
+    }
+
     if (match) {
-      // Clean up from buyFloatMap
-      if (match.float_val > 0) {
-        const floatSig = `${match.item_name}|${parseFloat(match.float_val).toFixed(12)}`;
-        const floatList = buyFloatMap[floatSig];
-        if (floatList) {
-          const idx = floatList.indexOf(match);
-          if (idx !== -1) floatList.splice(idx, 1);
-        }
-      } else {
-        // Clean up from buyNameMap
-        const nameList = buyNameMap[match.item_name];
-        if (nameList) {
-          const idx = nameList.indexOf(match);
-          if (idx !== -1) nameList.splice(idx, 1);
-        }
-      }
-
-      // Clean up from buyAssetMap
-      if (match.source === "DMarket" && match.asset_id) {
-        const assetList = buyAssetMap[match.asset_id];
-        if (assetList) {
-          const idx = assetList.indexOf(match);
-          if (idx !== -1) assetList.splice(idx, 1);
-        }
-      }
+      used.add(match);
+      decided.push({ sale, match, matchType });
+    } else if (!(sale.float_val > 0) && FLOATLESS_SOURCES.has(sale.source)) {
+      // Defer to pass 2 so exact float matches claim their purchases first.
+      fallbackQueue.push(sale);
+    } else {
+      decided.push({ sale, match: null, matchType: "none" });
     }
+  }
 
-    // Construct Result
+  // 4. Float-fallback for float-less skin markets (Aim/Avan): match a no-float
+  //    skin sale to a float-bearing purchase of the same name. Obvious when a
+  //    single candidate remains; otherwise the closest (latest eligible) buy.
+  for (const sale of fallbackQueue) {
+    const saleTime = getTxDate(sale).getTime();
+    const candidates = buyFloatByName[sale.item_name] || [];
+    let best = null;
+    for (const b of candidates) {
+      if (used.has(b)) continue;
+      if (getTxDate(b).getTime() + TRADE_HOLD_MS > saleTime) continue; // still locked at sale time
+      if (!best || getTxDate(b) > getTxDate(best)) best = b; // closest (latest) eligible purchase
+    }
+    if (best) {
+      used.add(best);
+      decided.push({ sale, match: best, matchType: "name_float" });
+    } else {
+      decided.push({ sale, match: null, matchType: "none" });
+    }
+  }
+
+  // 5. Build results (order is irrelevant downstream — the table re-sorts).
+  return decided.map(({ sale, match, matchType }) => {
     const buyPrice = match ? match.price : 0;
     const profit = sale.price - buyPrice;
 
     // Use merged pattern/phase/float from whichever transaction has it
     const mergedFloat = sale.float_val || (match ? match.float_val : 0);
-    const mergedPattern = (sale.pattern !== -1 && sale.pattern !== undefined) ? sale.pattern : (match && match.pattern !== undefined ? match.pattern : -1);
+    const mergedPattern =
+      sale.pattern !== -1 && sale.pattern !== undefined
+        ? sale.pattern
+        : match && match.pattern !== undefined
+          ? match.pattern
+          : -1;
     const mergedPhase = sale.phase || (match ? match.phase : "");
 
-    // Generate signature to preserve interface contract
-    const sig = generateSignature(sale.item_name, mergedFloat, mergedPattern);
-
-    results.push({
+    return {
       item_name: sale.item_name,
-      signature: sig,
+      signature: generateSignature(sale.item_name, mergedFloat, mergedPattern),
 
       // Buy Info
       buy_source: match ? match.source : "N/A",
@@ -163,10 +172,8 @@ export function matchTransactions(sales, buys) {
       pattern: mergedPattern,
       phase: mergedPhase,
       match_type: matchType,
-    });
-  }
-
-  return results;
+    };
+  });
 }
 
 export function matchInventory(inventoryItems, allBuys) {

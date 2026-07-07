@@ -163,44 +163,54 @@ export class YoupinFetcher extends BaseFetcher {
           const txDate = new Date(rawTime);
 
           const products = order.productDetailList || [];
+          if (products.length === 0) continue;
 
-          // BULK LOGIC START
-          if (products.length > 3) {
-            const firstItem = products[0];
-            const count = products.commodityNum;
-            const name =
-              firstItem.commodityHashName || firstItem.CommodityHashName;
+          // `commodityNum` is the true number of units in the order. For batch
+          // sales/buys of identical fungible items (e.g. 78 cases) the API only
+          // returns a few sample products in productDetailList, so we expand the
+          // order into `commodityNum` individual unit transactions.
+          const qty = parseInt(order.commodityNum) || products.length || 1;
 
-            const bulkName = `${name} x${count}`;
+          if (qty > products.length) {
+            const first = products[0];
+            const name = first.commodityHashName || first.CommodityHashName;
 
-            let totalCNY =
+            const totalCNY =
               (order.totalAmount ||
                 order.commodityAmount ||
                 order.payAmount ||
                 0) / 100.0;
+            // Per-unit price from the order total, with the item price as fallback
+            let unitCNY =
+              totalCNY > 0 ? totalCNY / qty : (first.price || 0) / 100.0;
+            if (mode === "Sell") unitCNY = unitCNY * 0.99;
+            unitCNY = parseFloat(unitCNY.toFixed(2));
 
-            if (mode === "Sell") totalCNY = totalCNY * 0.99;
+            const floatVal = parseFloat(first.abrade || 0);
+            const phase = first.dopplerTitle || "";
+            const pattern = first.paintSeed || -1;
 
-            allTxs.push(
-              new Transaction({
-                source: "Youpin",
-                type: mode === "Buy" ? "BUY" : "SELL",
-                tx_id: order.orderNo,
-                asset_id: "BATCH",
-                item_name: bulkName,
-                price: parseFloat(totalCNY.toFixed(2)),
-                currency: "CNY",
-                created_at: txDate,
-                verified_at: txDate,
-                float_val: 0,
-                pattern: -1,
-                phase: "",
-              }),
-            );
+            for (let i = 0; i < qty; i++) {
+              allTxs.push(
+                new Transaction({
+                  source: "Youpin",
+                  type: mode === "Buy" ? "BUY" : "SELL",
+                  tx_id: `${order.orderNo}#${i + 1}`,
+                  asset_id: "",
+                  item_name: name,
+                  price: unitCNY,
+                  currency: "CNY",
+                  created_at: txDate,
+                  verified_at: txDate,
+                  float_val: floatVal,
+                  pattern: pattern,
+                  phase: phase,
+                }),
+              );
+            }
 
             continue;
           }
-          // BULK LOGIC END
 
           for (const item of products) {
             let priceCNY = item.price / 100.0;

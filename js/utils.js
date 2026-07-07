@@ -56,6 +56,19 @@ export function fitColumns(data) {
   return wscols.map((c) => ({ wch: Math.min(c.wch, 50) }));
 }
 
+// Neither chrome.storage.local nor JSON can hold Date objects (storage turns
+// them into {}, JSON.stringify into ISO strings inconsistently across paths).
+// Convert a Transaction's date fields to ISO strings so it round-trips; the
+// Transaction constructor rebuilds real Dates from them on load.
+export function serializeTransaction(t) {
+  const toISO = (d) => (d instanceof Date && !isNaN(d) ? d.toISOString() : null);
+  return {
+    ...t,
+    created_at: toISO(t.created_at),
+    verified_at: toISO(t.verified_at),
+  };
+}
+
 // JSON Download
 export function downloadJSON(obj, filename) {
   const dataStr =
