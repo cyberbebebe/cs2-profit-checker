@@ -6,10 +6,41 @@ function getTxDate(tx) {
   return new Date(0);
 }
 
-// Steam/CS2 default trade hold is 7 days; add a 1-hour safety margin.
-// A purchase made within this window is still trade-locked and therefore cannot
-// have been sold yet, so it must not be used as a name-match candidate.
-export const TRADE_HOLD_MS = 7 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000;
+// --- Steam/CS2 trade-hold release time ---------------------------------------
+// A purchase is trade-locked for ~7 days after it's acquired. While locked it
+// can't be the item that was sold, so name-based matches require the sale to
+// happen at/after the purchase's computed unlock time.
+//
+// Steam changed how that release moment is rounded on 2026-06-23:
+//   • Before: 7 full days, then aligned up to the next 07:00 UTC boundary — i.e.
+//     "7 full days plus the hours left in the current 07:00-UTC trading day", so
+//     the hold always expired at 07:00 UTC. e.g. buy 01 Jun 21:08 → 09 Jun 07:00.
+//   • On/after: 7 full days, then rounded up to the next whole hour.
+//     e.g. buy 03 Jul 21:08 → 10 Jul 22:00.
+// The rule in force is picked by the purchase date (the hold is set at buy time).
+const TRADE_HOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 full days
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+// 2026-06-23 00:00:00 UTC — the day the rounding rule changed.
+const TRADE_HOLD_RULE_CHANGE_MS = Date.UTC(2026, 5, 23, 0, 0, 0, 0);
+
+// Unlock timestamp (ms since epoch) for an item purchased at `buyTime` (ms).
+export function tradeHoldUnlockTime(buyTime) {
+  if (buyTime >= TRADE_HOLD_RULE_CHANGE_MS) {
+    // New rule: +7 days, then rounded up to the next whole hour.
+    return Math.ceil(buyTime / HOUR_MS) * HOUR_MS + TRADE_HOLD_MS;
+  }
+  // Old rule: +7 days, aligned up to the next 07:00 UTC boundary.
+  const d = new Date(buyTime);
+  let boundary = Date.UTC(
+    d.getUTCFullYear(),
+    d.getUTCMonth(),
+    d.getUTCDate(),
+    7, 0, 0, 0,
+  );
+  if (boundary < buyTime) boundary += DAY_MS; // already past 07:00 → next day 07:00
+  return boundary + TRADE_HOLD_MS;
+}
 
 // Skin markets that don't report float/pattern (their skin sales carry no
 // fingerprint, so they can only be matched to a float-bearing purchase by name).
@@ -65,11 +96,9 @@ export function matchTransactions(sales, buys) {
 
       let ok = false;
       if (requireHold) {
-        // Steam trade lock: 7 days after the purchase rounded up to the next hour.
-        const hourMs = 3600000;
-        const roundedBuyHour = Math.ceil(bt / hourMs) * hourMs;
-        const unlockTime = roundedBuyHour + (7 * 24 * hourMs);
-        ok = saleTime >= unlockTime;
+        // Item is trade-locked until its computed release time (the rounding
+        // rule depends on the purchase date — see tradeHoldUnlockTime).
+        ok = saleTime >= tradeHoldUnlockTime(bt);
       } else {
         ok = bt <= saleTime;
       }
@@ -102,9 +131,14 @@ export function matchTransactions(sales, buys) {
       if (match) matchType = "asset_id";
     }
 
-    // C: Name-based FIFO matching for no-float items (cases, agents…), with the
-    // per-pair trade-hold: sale_date >= buy_date + TRADE_HOLD_MS.
-    if (!match && !(sale.float_val > 0)) {
+    // C: Name-based matching against float-less purchases, with the per-pair
+    // trade-hold: sale_date >= tradeHoldUnlockTime(buy_date). This covers both
+    // no-float items (cases, agents…) and float-bearing sales whose buy came
+    // from a marketplace that doesn't report float (e.g. a CSFloat glove sale
+    // matched to its SkinPlace/SkinSwap purchase). Float buys and no-float buys
+    // are disjoint pools, so this never competes with the exact float match in
+    // pass A.
+    if (!match) {
       match = findFirst(buyNameMap[sale.item_name], saleTime, true);
       if (match) matchType = "name";
     }
@@ -131,10 +165,7 @@ export function matchTransactions(sales, buys) {
       if (used.has(b)) continue;
 
       const bt = getTxDate(b).getTime();
-      const hourMs = 3600000;
-      const roundedBuyHour = Math.ceil(bt / hourMs) * hourMs;
-      const unlockTime = roundedBuyHour + (7 * 24 * hourMs);
-      if (saleTime < unlockTime) continue; // still locked at sale time
+      if (saleTime < tradeHoldUnlockTime(bt)) continue; // still locked at sale time
 
       if (!best || getTxDate(b) > getTxDate(best)) best = b; // closest (latest) eligible purchase
     }

@@ -119,8 +119,26 @@ export class C5GameFetcher extends BaseFetcher {
             if (m) token = decodeURIComponent(m[1]);
           }
 
-          const headers = { Accept: "application/json, text/plain, */*" };
+          // C5's gateway answers EVERY API call that lacks a client-source
+          // header with {success:false, errorCode:101, errorMsg:"Not login"} —
+          // even when the session cookie + x-access-token are valid. `x-source:1`
+          // (WEB) is the header the site's own requests carry and is all the
+          // backend actually checks for auth; the `x-sign` MD5 the site also
+          // sends is NOT validated (a bogus value is accepted). Without
+          // x-source the session check fails first, so balance AND history both
+          // silently return nothing. x-app-channel / x-area / x-device-id are
+          // the other constant headers the site sends — included for parity.
+          const headers = {
+            Accept: "application/json, text/plain, */*",
+            "x-source": "1",
+            "x-app-channel": "WEB",
+            "x-area": "1",
+          };
           if (token) headers["x-access-token"] = token;
+          const deviceMatch = document.cookie.match(
+            /(?:^|;\s*)NC5_deviceId=([^;]+)/,
+          );
+          if (deviceMatch) headers["x-device-id"] = decodeURIComponent(deviceMatch[1]);
 
           try {
             const resp = await fetch(url, {
@@ -141,7 +159,17 @@ export class C5GameFetcher extends BaseFetcher {
           }
         },
       });
-      return results?.[0]?.result || { ok: false, status: 0, error: "no result" };
+      const result = results?.[0]?.result || {
+        ok: false,
+        status: 0,
+        error: "no result",
+      };
+      if (result.json && result.json.errorCode === 101) {
+        console.warn(
+          `[C5Game] errorCode 101 "Not login" on ${url} — request is missing the 'x-source' header (see pageFetch). Auth token is fine; the gateway rejects unsourced calls.`,
+        );
+      }
+      return result;
     } catch (e) {
       // executeScript itself failed (tab closed, missing permission, etc.)
       return { ok: false, status: 0, error: String(e) };

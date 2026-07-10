@@ -20,52 +20,109 @@ export class SkinsFetcher extends BaseFetcher {
     super("Skins");
     this.sessionToken = null;
     this._historyPromise = null;
+    this._tokenPromise = null;
   }
 
   async getSessionToken() {
     try {
-      if (typeof chrome === "undefined" || !chrome.tabs || !chrome.scripting) {
+      if (typeof chrome === "undefined") {
         console.error("[Skins.com] Chrome Extension APIs are missing! Check context.");
         return null;
       }
 
-      let tabs = await chrome.tabs.query({ url: "*://*.skins.com/*" });
-      let tabId = null;
-      let shouldCloseTab = false;
-
-      if (tabs.length === 0) {
-        console.log("[Skins.com] No skins.com tab found. Creating background tab...");
-        const newTab = await chrome.tabs.create({
-          url: "https://skins.com/",
-          active: false,
-        });
-        tabId = newTab.id;
-        shouldCloseTab = true;
-
-        await new Promise((resolve) => {
-          const listener = (id, info) => {
-            if (id === tabId && info.status === "complete") {
-              chrome.tabs.onUpdated.removeListener(listener);
-              resolve();
-            }
-          };
-          chrome.tabs.onUpdated.addListener(listener);
-          // Safety timeout
-          setTimeout(() => {
-            chrome.tabs.onUpdated.removeListener(listener);
-            resolve();
-          }, 8000);
-        });
-        // Extra delay to ensure cookies/scripts are loaded
-        await new Promise((r) => setTimeout(r, 2000));
-      } else {
-        tabId = tabs[0].id;
-        console.log("[Skins.com] Found existing skins.com tab, ID:", tabId);
+      // Fast path: the token is often a JS-readable cookie we can grab without a
+      // tab. Only use it if it actually authenticates — a stale cookie token
+      // must not shadow the (working) tab fallback below.
+      const cookieToken = await this._readTokenFromCookies();
+      if (cookieToken && (await this._isTokenValid(cookieToken))) {
+        console.log("[Skins.com] Using valid token from cookies (no tab).");
+        return cookieToken;
+      }
+      if (cookieToken) {
+        console.log("[Skins.com] Cookie token present but invalid — falling back to tab.");
       }
 
-      console.log("[Skins.com] Executing script in tab to read cookies/localStorage...");
+      // Fallback: skins.com's SPA keeps the session token in localStorage (it is
+      // replayed as an `Authorization: Bearer` header, so the front-end has to be
+      // able to read it). chrome.cookies can't see localStorage, so read it from
+      // an authenticated skins.com tab, opening a hidden one if none is present.
+      const pageToken = await this._readTokenFromPage();
+      if (pageToken && (await this._isTokenValid(pageToken))) {
+        console.log("[Skins.com] Using valid token from page/tab.");
+        return pageToken;
+      }
+
+      console.warn("[Skins.com] No valid session token via cookie or tab — open skins.com and log in.");
+      return null;
+    } catch (e) {
+      console.error("[Skins.com] Error retrieving session token:", e);
+      return null;
+    }
+  }
+
+  // Read the session token straight from cookies (no tab needed). Returns the
+  // value or null. Covers both a cookie scoped to skins.com and any subdomain.
+  async _readTokenFromCookies() {
+    if (!chrome.cookies) return null;
+    const possibleNames = ["session-token", "session_token"];
+
+    for (const name of possibleNames) {
+      const cookie = await chrome.cookies.get({ url: "https://skins.com", name });
+      if (cookie && cookie.value) return cookie.value;
+    }
+
+    // Fallback: scan every cookie with these names across skins.com subdomains.
+    for (const name of possibleNames) {
+      const allCookies = await chrome.cookies.getAll({ name });
+      const match = allCookies.find(
+        (c) => c.domain && c.domain.includes("skins.com"),
+      );
+      if (match && match.value) return match.value;
+    }
+
+    return null;
+  }
+
+  // Read the token from a skins.com tab's localStorage / document.cookie via
+  // chrome.scripting. Reuses an open tab; otherwise opens a hidden one, waits
+  // for the SPA to boot, then closes it afterwards.
+  async _readTokenFromPage() {
+    if (!chrome.tabs || !chrome.scripting) {
+      console.error("[Skins.com] chrome.tabs / chrome.scripting APIs are missing! Check context.");
+      return null;
+    }
+
+    const tabs = await chrome.tabs.query({ url: "*://*.skins.com/*" });
+    let tabId;
+    let shouldCloseTab = false;
+
+    if (tabs.length === 0) {
+      console.log("[Skins.com] No skins.com tab found. Opening a background tab...");
+      const newTab = await chrome.tabs.create({ url: "https://skins.com/", active: false });
+      tabId = newTab.id;
+      shouldCloseTab = true;
+
+      await new Promise((resolve) => {
+        const listener = (id, info) => {
+          if (id === tabId && info.status === "complete") {
+            chrome.tabs.onUpdated.removeListener(listener);
+            resolve();
+          }
+        };
+        chrome.tabs.onUpdated.addListener(listener);
+        setTimeout(() => {
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }, 8000);
+      });
+      await this.sleep(2000); // let the SPA populate localStorage
+    } else {
+      tabId = tabs[0].id;
+    }
+
+    try {
       const results = await chrome.scripting.executeScript({
-        target: { tabId: tabId },
+        target: { tabId },
         func: () => {
           const getCookie = (name) => {
             const value = `; ${document.cookie}`;
@@ -73,78 +130,74 @@ export class SkinsFetcher extends BaseFetcher {
             if (parts.length === 2) return parts.pop().split(";").shift();
             return null;
           };
-          return {
-            cookieToken: getCookie("session-token") || getCookie("session_token"),
-            localStorageToken: localStorage.getItem("session-token") || localStorage.getItem("session_token") || localStorage.getItem("token")
-          };
+          return (
+            getCookie("session-token") ||
+            getCookie("session_token") ||
+            localStorage.getItem("session-token") ||
+            localStorage.getItem("session_token") ||
+            localStorage.getItem("token") ||
+            null
+          );
         },
       });
-
-      const scriptData = results?.[0]?.result;
-      console.log("[Skins.com] Script results:", scriptData);
-
+      return results?.[0]?.result || null;
+    } finally {
       if (shouldCloseTab) {
-        console.log("[Skins.com] Closing background tab...");
-        await chrome.tabs.remove(tabId);
-      }
-
-      let token = scriptData?.cookieToken || scriptData?.localStorageToken;
-
-      // Fallback: if not found via script execution, try chrome.cookies
-      if (!token && chrome.cookies) {
-        console.log("[Skins.com] Script did not find token. Trying chrome.cookies...");
-        const possibleNames = ["session-token", "session_token"];
-        for (const name of possibleNames) {
-          let cookie = await chrome.cookies.get({
-            url: "https://skins.com",
-            name: name
-          });
-          if (cookie && cookie.value) {
-            token = cookie.value;
-            break;
-          }
-        }
-        if (!token) {
-          for (const name of possibleNames) {
-            const allCookies = await chrome.cookies.getAll({ name: name });
-            if (allCookies && allCookies.length > 0) {
-              const match = allCookies.find(c => c.domain && (c.domain === "skins.com" || c.domain.endsWith(".skins.com") || c.domain.includes("skins.com")));
-              if (match && match.value) {
-                token = match.value;
-                break;
-              }
-            }
-          }
+        try {
+          await chrome.tabs.remove(tabId);
+        } catch (e) {
+          /* tab already gone */
         }
       }
+    }
+  }
 
-      if (token) {
-        console.log("[Skins.com] Successfully retrieved token:", token.substring(0, 10) + "...");
-      } else {
-        console.warn("[Skins.com] No token found in cookies, localStorage, or chrome.cookies.");
-      }
-
-      return token;
+  // Verify a candidate token actually authenticates (the wallet endpoint
+  // returns { success: true }). Lets us decide whether the cheap cookie token is
+  // good enough or we must fall back to reading the page.
+  async _isTokenValid(token) {
+    if (!token) return false;
+    try {
+      const resp = await fetch("https://api.skins.com/secure/user/wallet", {
+        method: "GET",
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) return false;
+      const data = await resp.json().catch(() => null);
+      return !!(data && data.success);
     } catch (e) {
-      console.error("[Skins.com] Error retrieving session token:", e);
-      return null;
+      return false;
+    }
+  }
+
+  // Resolve a working token once and cache it for the rest of this run:
+  // cached → cookie (validated, no tab) → tab fallback. Concurrent callers share
+  // a single in-flight resolution so we never open two background tabs at once.
+  async ensureSessionToken() {
+    if (this.sessionToken) return this.sessionToken;
+    if (this._tokenPromise) return this._tokenPromise;
+
+    this._tokenPromise = this.getSessionToken();
+    try {
+      this.sessionToken = await this._tokenPromise;
+      return this.sessionToken;
+    } finally {
+      this._tokenPromise = null;
     }
   }
 
   async checkSession() {
     try {
       console.log("[Skins.com] Starting session check...");
-      const token = await this.getSessionToken();
+      // ensureSessionToken already validates the token against the wallet
+      // endpoint, so a resolved token means the session is good.
+      const token = await this.ensureSessionToken();
       if (!token) {
-        console.warn("[Skins.com] checkSession failed: no token found");
+        console.warn("[Skins.com] checkSession failed: no valid token found");
         return false;
       }
-      this.sessionToken = token;
-
-      console.log("[Skins.com] checkSession: fetching wallet with token...");
-      const data = await this.fetchWithAuth("https://api.skins.com/secure/user/wallet");
-      console.log("[Skins.com] checkSession wallet response:", data);
-      return !!(data && data.success);
+      return true;
     } catch (e) {
       console.error("[Skins.com] checkSession error:", e);
       return false;
@@ -163,10 +216,8 @@ export class SkinsFetcher extends BaseFetcher {
 
   async getBalance() {
     try {
-      if (!this.sessionToken) {
-        const hasSession = await this.checkSession();
-        if (!hasSession) return { amount: 0, currency: "USD" };
-      }
+      const token = await this.ensureSessionToken();
+      if (!token) return { amount: 0, currency: "USD" };
 
       const walletUrl = "https://api.skins.com/secure/user/wallet";
       const walletData = await this.fetchWithAuth(walletUrl);
@@ -185,6 +236,12 @@ export class SkinsFetcher extends BaseFetcher {
   }
 
   async fetchHistory() {
+    const token = await this.ensureSessionToken();
+    if (!token) {
+      console.warn("[Skins.com] fetchHistory: no valid session token — skipping.");
+      return [];
+    }
+
     const sections = ["recent", "history"];
     let allSkinsTxs = [];
 

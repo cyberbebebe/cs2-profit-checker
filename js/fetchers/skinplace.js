@@ -20,6 +20,20 @@ function extractDoppler(name) {
   return { name, phase: "" };
 }
 
+// SkinPlace stores the exterior separately (`shorten_exterior`) and omits it
+// from `steam_market_hash_name` (e.g. "★ Broken Fang Gloves | Yellow-banded"
+// instead of "… (Field-Tested)"). Rebuild the full Steam market hash name so
+// items line up with float-bearing marketplaces (CSFloat, DMarket, …) when the
+// matcher compares by name.
+function buildFullName(item) {
+  let name = item.steam_market_hash_name || "Unknown Item";
+  const ext = item.shorten_exterior;
+  if (ext && !name.includes(`(${ext})`)) {
+    name = `${name} (${ext})`;
+  }
+  return name;
+}
+
 export class SkinPlaceFetcher extends BaseFetcher {
   constructor() {
     super("SkinPlace");
@@ -77,7 +91,7 @@ export class SkinPlaceFetcher extends BaseFetcher {
         if (!tx.items) continue;
 
         for (const item of tx.items) {
-          const rawName = item.steam_market_hash_name || "Unknown Item";
+          const rawName = buildFullName(item);
           const { name: cleanName, phase } = extractDoppler(rawName);
 
           const price = parseFloat(item.price || tx.price || 0);
@@ -115,6 +129,63 @@ export class SkinPlaceFetcher extends BaseFetcher {
   }
 
   async getBuys() {
-    return [];
+    let allTxs = [];
+    let page = 1;
+    const limit = 50;
+
+    while (true) {
+      // Note: the purchase endpoint uses order_by/order_dir (the sell endpoint
+      // uses sort_column/sort_dir) and returns one `item` object per record,
+      // with price/time at the transaction level (sells nest an `items` array).
+      const url = `https://api.skin.place/api/market/profile/history/purchase?page=${page}&limit=${limit}&order_by=time_created&order_dir=desc`;
+      let data;
+      try {
+        data = await this.fetchWithAuth(url);
+      } catch (e) {
+        console.error(`[SkinPlace] Error fetching buys page ${page}:`, e);
+        break;
+      }
+
+      if (!data || data.status !== "success" || !data.data || data.data.length === 0) {
+        break;
+      }
+
+      for (const tx of data.data) {
+        if (tx.state !== "finished") continue;
+        const item = tx.item;
+        if (!item) continue;
+
+        const rawName = buildFullName(item);
+        const { name: cleanName, phase } = extractDoppler(rawName);
+
+        const price = parseFloat(tx.price || 0);
+        const createdDate = tx.time_created ? new Date(tx.time_created) : new Date();
+
+        allTxs.push(
+          new Transaction({
+            source: "SkinPlace",
+            type: "BUY",
+            tx_id: String(item.id || tx.id),
+            asset_id: String(item.id || ""),
+            item_name: cleanName,
+            price: price,
+            currency: "USD",
+            created_at: createdDate,
+            verified_at: null,
+            float_val: 0,
+            pattern: -1,
+            phase: phase || item.phase || "",
+          })
+        );
+      }
+
+      if (data.data.length < limit) {
+        break;
+      }
+      page++;
+      await this.sleep(300);
+    }
+
+    return allTxs;
   }
 }
