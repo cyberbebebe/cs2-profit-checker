@@ -20,7 +20,7 @@ import { initToggles } from "./modules/ui_toggles.js";
 import { initSessionCheck } from "./modules/ui_sessions.js";
 import { initFetch } from "./modules/ui_fetch.js";
 import { initReports } from "./modules/ui_reports.js";
-import { initTable } from "./modules/ui_table.js";
+import { initTable, updateColumnVisibility } from "./modules/ui_table.js";
 
 const state = {
   allSales: [],
@@ -124,10 +124,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       "dateEnd",
       "txOverrides",
       "fetchedData",
+      "showDaysHeld",
+      "showRoiDay",
+      "showUnsold",
     ]);
     if (stored.dateStart) startVal = stored.dateStart;
     if (stored.dateEnd) endVal = stored.dateEnd;
     if (stored.txOverrides) window.txOverrides = stored.txOverrides;
+
+    // Restore column checkboxes
+    const showDaysHeld = stored.showDaysHeld !== false; // default true
+    const showRoiDay = stored.showRoiDay !== false; // default true
+    const showUnsold = stored.showUnsold === true; // default false
+    const daysHeldChkBx = document.getElementById("show-days-held-checkbox");
+    const roiDayChkBx = document.getElementById("show-roi-day-checkbox");
+    const unsoldChkBx = document.getElementById("include-buys-checkbox");
+    if (daysHeldChkBx) daysHeldChkBx.checked = showDaysHeld;
+    if (roiDayChkBx) roiDayChkBx.checked = showRoiDay;
+    if (unsoldChkBx) unsoldChkBx.checked = showUnsold;
+    updateColumnVisibility();
 
     // Restore the last fetched dataset (Transactions are rebuilt so their
     // date fields become real Date objects again).

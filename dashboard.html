@@ -23,7 +23,8 @@
     <aside class="sidebar glass-panel">
       <header class="main-header">
         <h1>CS2 Profit Checker</h1>
-        <a href="https://github.com/cyberbebebe/" target="_blank" class="github-link">GitHub<span>↗</span></a>
+        <a href="https://github.com/cyberbebebe/cs2-profit-checker" target="_blank"
+          class="github-link">GitHub<span>↗</span></a>
       </header>
 
       <hr class="divider" />
@@ -52,7 +53,7 @@
           <label class="session-pill" id="card-csmoney" title="CSMoney">
             <input type="checkbox" id="toggle-csmoney" checked class="hidden-check" />
             <span class="status-dot status-unknown"></span>
-            <span class="pill-name">CSMoney</span>
+            <span class="pill-name">CSMoney (P2P)</span>
           </label>
 
           <label class="session-pill" id="card-buff163" title="Buff163">
@@ -111,7 +112,7 @@
           <label class="session-pill" id="card-csmoneybot" title="CSMoneyBot">
             <input type="checkbox" id="toggle-csmoneybot" checked class="hidden-check" />
             <span class="status-dot status-unknown"></span>
-            <span class="pill-name">CSMoneyBot</span>
+            <span class="pill-name">CSMoney (Bot)</span>
           </label>
 
           <label class="session-pill" id="card-avan" title="Avan Market">
@@ -144,20 +145,36 @@
 
       <!-- Filters & Data -->
       <div class="sidebar-section">
-        <h2>Data Engine</h2>
-        <div class="control-box">
-          <label>Period Start</label>
-          <input type="month" id="report-start-month" class="glass-input full-width" />
-        </div>
-        <div class="control-box">
-          <label>Period End</label>
-          <input type="month" id="report-end-month" class="glass-input full-width" />
+        <h2>Dashboard time period & settings</h2>
+        <div class="control-row">
+          <div class="control-box">
+            <label>Start</label>
+            <input type="month" id="report-start-month" class="glass-input full-width" />
+          </div>
+          <div class="control-box">
+            <label>End</label>
+            <input type="month" id="report-end-month" class="glass-input full-width" />
+          </div>
         </div>
         <div class="control-box toggle-row">
           <label for="include-buys-checkbox" class="modern-checkbox-wrap">
-            <input type="checkbox" id="include-buys-checkbox" checked />
+            <input type="checkbox" id="include-buys-checkbox" />
             <div class="checkbox-visual"></div>
             <span class="checkbox-label">Show Unsold Items</span>
+          </label>
+        </div>
+        <div class="control-box toggle-row">
+          <label for="show-days-held-checkbox" class="modern-checkbox-wrap">
+            <input type="checkbox" id="show-days-held-checkbox" checked />
+            <div class="checkbox-visual"></div>
+            <span class="checkbox-label">Show Days Held Column</span>
+          </label>
+        </div>
+        <div class="control-box toggle-row">
+          <label for="show-roi-day-checkbox" class="modern-checkbox-wrap">
+            <input type="checkbox" id="show-roi-day-checkbox" checked />
+            <div class="checkbox-visual"></div>
+            <span class="checkbox-label">Show ROI/Day Column</span>
           </label>
         </div>
 
@@ -279,8 +296,10 @@
                 <th data-sort="Profit ($)" class="num-col" style="width: 10%;">Profit<span class="sort-icon"></span>
                 </th>
                 <th data-sort="Profit %" class="num-col" style="width: 10%;">ROI %<span class="sort-icon"></span></th>
-                <th data-sort="Days Held" class="num-col" style="width: 8%;" title="Sold − Acquired, in days">Days Held<span class="sort-icon"></span></th>
-                <th data-sort="ROI/Day" class="num-col" style="width: 8%;" title="ROI % per day held">ROI/Day<span class="sort-icon"></span></th>
+                <th data-sort="Days Held" class="num-col th-holddays" style="width: 8%;"
+                  title="Sold − Acquired, in days">Days Held<span class="sort-icon"></span></th>
+                <th data-sort="ROI/Day" class="num-col th-roiday" style="width: 8%;" title="ROI % per day held">
+                  ROI/Day<span class="sort-icon"></span></th>
               </tr>
             </thead>
             <tbody id="table-body">

@@ -18,7 +18,16 @@ let cachedTRs = new Map();
 export function initTable(state) {
   document.getElementById("report-start-month")?.addEventListener("change", () => { cachedRowsData = null; cachedTRs.clear(); renderTable(state); });
   document.getElementById("report-end-month")?.addEventListener("change", () => { cachedRowsData = null; cachedTRs.clear(); renderTable(state); });
-  document.getElementById("include-buys-checkbox")?.addEventListener("change", () => { cachedRowsData = null; cachedTRs.clear(); renderTable(state); });
+  document.getElementById("include-buys-checkbox")?.addEventListener("change", () => {
+    try {
+      chrome.storage.local.set({ showUnsold: document.getElementById("include-buys-checkbox")?.checked === true });
+    } catch (e) {}
+    cachedRowsData = null;
+    cachedTRs.clear();
+    renderTable(state);
+  });
+  document.getElementById("show-days-held-checkbox")?.addEventListener("change", () => { updateColumnVisibility(); });
+  document.getElementById("show-roi-day-checkbox")?.addEventListener("change", () => { updateColumnVisibility(); });
   document.getElementById("table-search")?.addEventListener("click", (ev) => ev.stopPropagation());
   document.getElementById("table-search")?.addEventListener("input", () => { cachedTRs.clear(); renderTable(state, true); });
 
@@ -372,8 +381,9 @@ function updateStatsBar(rowsData) {
   const statRealized = document.getElementById("stat-realized-deals");
 
   statsBar.style.display = "flex";
-  statDeals.textContent = rowsData.length;
-  if (statRealized) statRealized.textContent = realizedDeals + " matched";
+  const totalDeals = rowsData.length + realizedDeals;
+  statDeals.textContent = totalDeals;
+  if (statRealized) statRealized.textContent = realizedDeals + " pairs";
   
   if (realizedDeals > 0) {
     statBest.textContent = (maxProfit >= 0 ? "+$" : "-$") + Math.abs(maxProfit).toFixed(2);
@@ -772,6 +782,7 @@ export async function renderTable(state, preserveScroll = false) {
     profitBadge.className = "profit-badge " + (cachedTotalProfit >= 0 ? "pos" : "neg");
     
     updateStatsBar(dataToRender);
+    updateColumnVisibility();
     return;
   }
 
@@ -864,4 +875,27 @@ export async function renderTable(state, preserveScroll = false) {
   profitBadge.className = "profit-badge " + (cachedTotalProfit >= 0 ? "pos" : "neg");
   
   updateStatsBar(dataToRender);
+  updateColumnVisibility();
+}
+
+export function updateColumnVisibility() {
+  const showDaysHeld = document.getElementById("show-days-held-checkbox")?.checked !== false;
+  const showRoiDay = document.getElementById("show-roi-day-checkbox")?.checked !== false;
+
+  try {
+    chrome.storage.local.set({
+      showDaysHeld: showDaysHeld,
+      showRoiDay: showRoiDay
+    });
+  } catch (e) {}
+
+  const thHold = document.querySelector(".th-holddays");
+  const thRoi = document.querySelector(".th-roiday");
+  if (thHold) thHold.style.display = showDaysHeld ? "" : "none";
+  if (thRoi) thRoi.style.display = showRoiDay ? "" : "none";
+
+  const tdHolds = document.querySelectorAll(".td-holddays");
+  const tdRois = document.querySelectorAll(".td-roiday");
+  tdHolds.forEach(td => td.style.display = showDaysHeld ? "" : "none");
+  tdRois.forEach(td => td.style.display = showRoiDay ? "" : "none");
 }

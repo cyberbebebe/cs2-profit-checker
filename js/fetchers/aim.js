@@ -60,7 +60,7 @@ export class AimMarketFetcher extends BaseFetcher {
     } finally {
       try {
         await chrome.tabs.remove(tabId);
-      } catch (e) {}
+      } catch (e) { }
     }
   }
 
@@ -99,7 +99,7 @@ export class AimMarketFetcher extends BaseFetcher {
             const store = JSON.parse(get("__user-store") || "{}");
             token = store.accessToken || null;
             userId = (store.user && store.user.id) || null;
-          } catch (e) {}
+          } catch (e) { }
           return { token, userId };
         },
       });
@@ -133,7 +133,7 @@ export class AimMarketFetcher extends BaseFetcher {
             let json = null;
             try {
               json = JSON.parse(text);
-            } catch (e) {}
+            } catch (e) { }
             return { ok: resp.ok, status: resp.status, json };
           } catch (e) {
             return { ok: false, status: 0, error: String(e) };
@@ -203,7 +203,6 @@ export class AimMarketFetcher extends BaseFetcher {
           return [];
         }
 
-        const rate = await this.getRate(tabId, token); // UAH per 1 USD
         const all = [];
         const limit = 50;
         let offset = 0;
@@ -224,11 +223,8 @@ export class AimMarketFetcher extends BaseFetcher {
           if (!Array.isArray(items) || items.length === 0) break;
 
           for (const it of items) {
-            // Amounts are UAH -> convert to USD (fall back to price_USD if given)
-            const uah = parseFloat(it.price || 0);
-            let usd = 0;
-            if (rate && rate > 0) usd = uah / rate;
-            else if (it.price_USD) usd = parseFloat(it.price_USD);
+            // Use price_USD directly (base currency). Defaults to 0 if not present.
+            const usd = it.price_USD ? parseFloat(it.price_USD) : 0;
 
             const txDate = it.createdAt ? new Date(it.createdAt) : new Date();
 

@@ -188,6 +188,9 @@ export class DMarketFetcher extends BaseFetcher {
   }
 
   async getInventory() {
+    // DMarket changed their offers and inventory endpoints; disabling for now.
+    return [];
+    /*
     try {
       const limit = 100;
       const gameId = "a8db"; // CS2 (CS:GO)
@@ -262,5 +265,6 @@ export class DMarketFetcher extends BaseFetcher {
       console.error("[DMarket] Inventory error:", e);
       return [];
     }
+    */
   }
 }

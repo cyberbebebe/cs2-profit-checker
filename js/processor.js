@@ -54,21 +54,33 @@ export function matchTransactions(sales, buys) {
   // function is re-run on every render).
   const used = new Set();
 
-  // First still-available buy in `list` that satisfies the date rule. Buys are
-  // oldest-first, so this is FIFO (earliest eligible purchase).
+  // Latest still-available buy in `list` that satisfies the date rule. Buys are
+  // oldest-first, so scanning from the end backward matches the latest purchase (LIFO).
   const findFirst = (list, saleTime, requireHold) => {
     if (!list) return null;
-    for (const b of list) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const b = list[i];
       if (used.has(b)) continue;
       const bt = getTxDate(b).getTime();
-      const ok = requireHold ? bt + TRADE_HOLD_MS <= saleTime : bt <= saleTime;
+
+      let ok = false;
+      if (requireHold) {
+        // Steam trade lock: 7 days after the purchase rounded up to the next hour.
+        const hourMs = 3600000;
+        const roundedBuyHour = Math.ceil(bt / hourMs) * hourMs;
+        const unlockTime = roundedBuyHour + (7 * 24 * hourMs);
+        ok = saleTime >= unlockTime;
+      } else {
+        ok = bt <= saleTime;
+      }
       if (ok) return b;
     }
     return null;
   };
 
-  // 3. Process Sales OLDEST first so the FIFO queue resolves correctly.
-  const orderedSales = sales.slice().sort(byOldest);
+  // 3. Process Sales NEWEST first so the LIFO queue resolves correctly.
+  const byNewest = (a, b) => getTxDate(b) - getTxDate(a);
+  const orderedSales = sales.slice().sort(byNewest);
   const decided = []; // { sale, match, matchType }
   const fallbackQueue = []; // float-less skin sales deferred to pass 2
 
@@ -117,7 +129,13 @@ export function matchTransactions(sales, buys) {
     let best = null;
     for (const b of candidates) {
       if (used.has(b)) continue;
-      if (getTxDate(b).getTime() + TRADE_HOLD_MS > saleTime) continue; // still locked at sale time
+
+      const bt = getTxDate(b).getTime();
+      const hourMs = 3600000;
+      const roundedBuyHour = Math.ceil(bt / hourMs) * hourMs;
+      const unlockTime = roundedBuyHour + (7 * 24 * hourMs);
+      if (saleTime < unlockTime) continue; // still locked at sale time
+
       if (!best || getTxDate(b) > getTxDate(best)) best = b; // closest (latest) eligible purchase
     }
     if (best) {

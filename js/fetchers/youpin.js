@@ -94,7 +94,27 @@ export class YoupinFetcher extends BaseFetcher {
         return { amount: 0, currency: "USD" };
       }
 
-      const cny = parseFloat(json.Data.TotalMoney || 0);
+      let cny = parseFloat(json.Data.TotalMoney || 0);
+
+      let purchaseBalance = 0;
+      try {
+        const purchaseResp = await fetch(
+          "https://api.youpin898.com/api/youpin/bff/new/commodity/v3/purchase/user/info",
+          {
+            method: "GET",
+            headers: this.headers,
+          },
+        );
+        const purchaseJson = await purchaseResp.json();
+        if (purchaseJson && purchaseJson.code === 0 && purchaseJson.data && purchaseJson.data.balance !== undefined) {
+          purchaseBalance = parseFloat(purchaseJson.data.balance || 0) / 100.0;
+        }
+      } catch (e) {
+        console.warn("[Youpin] Purchase balance check failed:", e);
+        purchaseBalance = 0;
+      }
+
+      cny += purchaseBalance;
 
       return { amount: cny, currency: "CNY" };
     } catch (e) {
