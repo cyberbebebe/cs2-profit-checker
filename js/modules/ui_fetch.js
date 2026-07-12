@@ -1,7 +1,77 @@
 import { log, serializeTransaction } from "../utils.js";
 
+// ---------------------------------------------------------------------------
+// Incremental sync helpers
+//
+// The strategy: on a normal sync we don't re-download a source's whole history.
+// Every marketplace API here returns transactions newest-first, so each source
+// is only re-fetched from 00:00 UTC of the day of its newest CACHED transaction
+// forward (the "cutoff"). Older rows are already stored locally and are merged
+// back in untouched. A source is fetched in FULL instead when it has no cached
+// data (new market / first run), when it failed the previous sync, or when the
+// user asks for a Full Resync. The cutoff rides the stored data itself, so no
+// separate "last sync" timestamp needs to be persisted.
+// ---------------------------------------------------------------------------
+
+// Effective time of a transaction: the newest of created/verified (ms).
+function txTime(t) {
+  const c = t.created_at instanceof Date ? t.created_at.getTime() : 0;
+  const v = t.verified_at instanceof Date ? t.verified_at.getTime() : 0;
+  return Math.max(c, v);
+}
+
+// 00:00:00.000 UTC of the day containing `ms`.
+function startOfUtcDay(ms) {
+  const d = new Date(ms);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+// Newest cached-transaction time for one source (across sales + buys), or null
+// when the source has nothing stored yet.
+function newestCachedTime(state, source) {
+  let max = null;
+  for (const arr of [state.allSales, state.allBuys]) {
+    for (const t of arr) {
+      if (t.source !== source) continue;
+      const ms = txTime(t);
+      if (ms && (max === null || ms > max)) max = ms;
+    }
+  }
+  return max;
+}
+
+// Group a transaction array into { source: [txns] }, restricted to `names`.
+function groupBySource(arr, names) {
+  const out = {};
+  for (const t of arr) {
+    if (!names.has(t.source)) continue;
+    (out[t.source] ||= []).push(t);
+  }
+  return out;
+}
+
+// Merge a fresh incremental pull over the cached rows for one source. The fresh
+// pull re-covers everything from the cutoff forward, so: keep cached rows that
+// are strictly older than the cutoff AND weren't re-returned by the fresh pull
+// (a page can spill just past the cutoff), then append all fresh rows. Result:
+// fresh data wins for anything in the window (status/price updates apply), rows
+// that vanished from the window drop out, and the deep history is preserved.
+function mergeIncremental(cached, fresh, cutoffMs) {
+  // Nothing came back. Some fetchers swallow transient errors and return [] (no
+  // throw), so an empty pull is not proof the window is empty — keep the cached
+  // rows intact rather than dropping the recent window. The next sync re-covers
+  // it (and a real cancellation is cleaned up by Full Resync).
+  if (fresh.length === 0) return cached;
+  const freshIds = new Set(fresh.map((t) => t.tx_id));
+  const kept = cached.filter(
+    (t) => txTime(t) < cutoffMs && !freshIds.has(t.tx_id),
+  );
+  return [...kept, ...fresh];
+}
+
 export function initFetch(state) {
   const btn = document.getElementById("btn-fetch-all");
+  const btnFullResync = document.getElementById("btn-full-resync");
   const progressFill = document.getElementById("progress-fill");
   const progressText = document.getElementById("progress-text");
   const panelReports = document.getElementById("panel-reports");
@@ -20,8 +90,9 @@ export function initFetch(state) {
     return checkbox && checkbox.checked;
   };
 
-  btn.addEventListener("click", async () => {
+  const runSync = async () => {
     btn.disabled = true;
+    if (btnFullResync) btnFullResync.disabled = true;
 
     // 1. Selected (checked) marketplaces. Unselected (gray) pills are ignored.
     const enabledFetchers = state.fetchers.filter(isEnabled);
@@ -29,6 +100,7 @@ export function initFetch(state) {
     if (enabledFetchers.length === 0) {
       alert("No marketplaces selected!");
       btn.disabled = false;
+      if (btnFullResync) btnFullResync.disabled = false;
       return;
     }
 
@@ -40,18 +112,45 @@ export function initFetch(state) {
     const isPartial = retryOnly.length > 0;
     const targetFetchers = isPartial ? retryOnly : enabledFetchers;
 
-    // 3. Full sync starts clean; partial sync keeps the data from sources that
-    //    already succeeded and only replaces the ones being retried.
+    // Full Resync (one-shot): re-download complete history for every target,
+    // ignoring the incremental cutoff. Used for a clean rebuild / recovery.
+    const forceFull = state.forceFullResync === true;
+    state.forceFullResync = false;
+
+    // 3. Decide per source whether this is an incremental or a full fetch, and
+    //    (for incremental) the cutoff = 00:00 UTC of its newest cached txn.
+    //    Computed BEFORE we touch the arrays, since it reads the cached data.
+    const plan = {};
+    for (const f of targetFetchers) {
+      const newest = newestCachedTime(state, f.name);
+      const incremental =
+        !forceFull &&
+        f.supportsIncremental !== false &&
+        !prevFailed.has(f.name) &&
+        newest !== null;
+      plan[f.name] = {
+        mode: incremental ? "incremental" : "full",
+        cutoff: incremental ? startOfUtcDay(newest) : null,
+      };
+    }
+
+    // 4. Snapshot the cached rows for the sources we're about to sync (the
+    //    incremental base), then remove those sources from the live arrays.
+    //    Sources NOT being synced are kept on a partial run and dropped on a
+    //    full run (mirrors the previous "clear all, refetch enabled" behavior).
+    const targetNames = new Set(targetFetchers.map((f) => f.name));
+    const cachedSales = groupBySource(state.allSales, targetNames);
+    const cachedBuys = groupBySource(state.allBuys, targetNames);
+
     if (!isPartial) {
       state.allSales = [];
       state.allBuys = [];
       state.inventory = [];
     } else {
-      const retryNames = new Set(targetFetchers.map((f) => f.name));
-      state.allSales = state.allSales.filter((t) => !retryNames.has(t.source));
-      state.allBuys = state.allBuys.filter((t) => !retryNames.has(t.source));
+      state.allSales = state.allSales.filter((t) => !targetNames.has(t.source));
+      state.allBuys = state.allBuys.filter((t) => !targetNames.has(t.source));
       state.inventory = (state.inventory || []).filter(
-        (t) => !retryNames.has(t.source),
+        (t) => !targetNames.has(t.source),
       );
     }
 
@@ -65,18 +164,23 @@ export function initFetch(state) {
       progressText.textContent = `${pct}% - ${actionName} Done`;
     };
 
-    progressText.textContent = isPartial
-      ? "Retrying failed sources..."
-      : "Starting...";
+    progressText.textContent = forceFull
+      ? "Full resync — re-downloading all history..."
+      : isPartial
+        ? "Retrying failed sources..."
+        : "Starting...";
     progressFill.style.width = "5%";
     targetFetchers.forEach((f) => setDot(f.name, "unknown")); // reset to idle
 
-    // 4. Fetch each target. A source "fails" if its session check fails or a
+    // 5. Fetch each target. A source "fails" if its session check fails or a
     //    data request throws — it gets a red dot and is queued for next retry.
     const newFailed = new Set();
 
     const promises = targetFetchers.map(async (f) => {
-      log(`${f.name}: Fetching Sales and Buys concurrently...`);
+      const { mode, cutoff } = plan[f.name];
+      f.sinceCutoff = cutoff; // Date (incremental) or null (full)
+      if (typeof f.resetCache === "function") f.resetCache();
+      log(`${f.name}: Fetching (${mode})...`);
 
       let connected = false;
       try {
@@ -88,12 +192,17 @@ export function initFetch(state) {
       if (!connected) {
         setDot(f.name, "disconnected");
         newFailed.add(f.name);
+        // Keep this source's cached data (nothing was refetched).
+        state.allSales.push(...(cachedSales[f.name] || []));
+        state.allBuys.push(...(cachedBuys[f.name] || []));
         updateProgress(`${f.name} Sales`);
         updateProgress(`${f.name} Buys`);
         return;
       }
 
       let sawError = false;
+      const freshSales = [];
+      const freshBuys = [];
       const fetchTask = async (taskName, fetchFn, targetArray) => {
         try {
           const data = await fetchFn();
@@ -107,8 +216,8 @@ export function initFetch(state) {
       };
 
       await Promise.all([
-        fetchTask("Sales", () => f.getSales(), state.allSales),
-        fetchTask("Buys", () => f.getBuys(), state.allBuys),
+        fetchTask("Sales", () => f.getSales(), freshSales),
+        fetchTask("Buys", () => f.getBuys(), freshBuys),
       ]);
 
       if (f.name === "Steam" || f.name === "DMarket") {
@@ -118,6 +227,26 @@ export function initFetch(state) {
         } catch (e) {
           log(`${f.name} Inv Error: ${e.message}`);
         }
+      }
+
+      // 6. Fold the fresh rows into state. On an incremental sync we merge them
+      //    over the cached history; on a full sync they replace it. If an
+      //    incremental fetch errored mid-way the fresh window may be incomplete,
+      //    so we keep the cache intact and let the next sync retry in full.
+      if (mode === "incremental" && sawError) {
+        state.allSales.push(...(cachedSales[f.name] || []));
+        state.allBuys.push(...(cachedBuys[f.name] || []));
+      } else if (mode === "incremental") {
+        const cMs = cutoff.getTime();
+        state.allSales.push(
+          ...mergeIncremental(cachedSales[f.name] || [], freshSales, cMs),
+        );
+        state.allBuys.push(
+          ...mergeIncremental(cachedBuys[f.name] || [], freshBuys, cMs),
+        );
+      } else {
+        state.allSales.push(...freshSales);
+        state.allBuys.push(...freshBuys);
       }
 
       if (sawError) {
@@ -131,12 +260,16 @@ export function initFetch(state) {
     await Promise.all(promises);
     state.failedSources = newFailed;
 
-    // 5. Finish
+    // 7. Finish
     progressFill.style.width = "100%";
     const failedCount = newFailed.size;
+    const incrementalCount = targetFetchers.filter(
+      (f) => plan[f.name].mode === "incremental" && !newFailed.has(f.name),
+    ).length;
     progressText.textContent =
-      `${isPartial ? "Retried failed" : "Done"}! ` +
+      `${forceFull ? "Full resync" : isPartial ? "Retried failed" : "Done"}! ` +
       `Sales: ${state.allSales.length}, Buys: ${state.allBuys.length}` +
+      (incrementalCount ? ` · ${incrementalCount} incremental` : "") +
       (failedCount
         ? ` · ${failedCount} failed — next sync retries only these`
         : "");
@@ -145,8 +278,9 @@ export function initFetch(state) {
     if (state.dataFetched) panelReports.classList.remove("disabled");
     btn.innerHTML = failedCount
       ? "<span>🔁 Retry Failed Sources</span>"
-      : "<span>🔄 Sync Data Again</span>";
+      : "<span>🔄 Sync New Data</span>";
     btn.disabled = false;
+    if (btnFullResync) btnFullResync.disabled = false;
 
     // Persist locally so the data survives closing/reopening the dashboard.
     // Skipped if nothing came back (so a transient failure doesn't wipe cache).
@@ -167,7 +301,31 @@ export function initFetch(state) {
 
     // Table auto-updates after every sync (full or partial).
     btn.dispatchEvent(new Event("fetchComplete"));
-  });
+  };
+
+  btn.addEventListener("click", runSync);
+
+  // FULL RESYNC — ignore the incremental cutoff and re-download the complete
+  // history for every selected market (clean rebuild / recovery). Clears any
+  // pending failed-source retry so it targets all enabled sources, not just the
+  // failed subset.
+  if (btnFullResync) {
+    btnFullResync.addEventListener("click", () => {
+      if (btn.disabled) return;
+      if (
+        state.dataFetched &&
+        !confirm(
+          "Full Resync re-downloads the ENTIRE history for every selected market. " +
+            "This is slower than a normal sync. Continue?",
+        )
+      ) {
+        return;
+      }
+      state.forceFullResync = true;
+      state.failedSources = new Set();
+      runSync();
+    });
+  }
 
   // BALANCE CHECKER
   const btnBalance = document.getElementById("btn-get-balance");

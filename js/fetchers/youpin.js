@@ -172,6 +172,7 @@ export class YoupinFetcher extends BaseFetcher {
 
         if (orderList.length === 0) break;
 
+        const before = allTxs.length;
         for (const order of orderList) {
           let rawTime = order.finishOrderTime || 0;
           if (
@@ -268,6 +269,7 @@ export class YoupinFetcher extends BaseFetcher {
           }
         }
 
+        if (this.reachedCutoff(allTxs.slice(before))) break;
         if (orderList.length < pageSize) break;
         page++;
         await this.sleep(500);

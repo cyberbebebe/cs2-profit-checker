@@ -15,6 +15,145 @@ let cachedTotalProfit = 0;
 // DOM pool — cached TR elements for instant sort reordering
 let cachedTRs = new Map();
 
+// ---------------------------------------------------------------------------
+// Column filters
+//   • Acquired / Sold: exact market-source match (via the two <select>s).
+//   • Numeric columns: a comparator expression typed into the column input —
+//     ">5", "<10", ">=5", "<=10", "=7", a range "5-20", or a bare number
+//     (treated as ">="). Anything unparseable is ignored (acts as no filter).
+// ---------------------------------------------------------------------------
+
+// Turn a filter expression into a predicate `(value) => boolean`, or null when
+// there's nothing to filter on. Rows whose value is null/undefined pass NaN in
+// and are excluded by every comparator (they have no value to compare).
+function parseNumFilter(raw) {
+  const s = (raw || "").trim();
+  if (!s) return null;
+  let m = s.match(/^(-?\d*\.?\d+)\s*-\s*(-?\d*\.?\d+)$/); // range "N-M"
+  if (m) {
+    const lo = parseFloat(m[1]);
+    const hi = parseFloat(m[2]);
+    const min = Math.min(lo, hi);
+    const max = Math.max(lo, hi);
+    return (v) => Number.isFinite(v) && v >= min && v <= max;
+  }
+  m = s.match(/^(>=|<=|>|<|=)?\s*(-?\d*\.?\d+)$/); // operator + number
+  if (m) {
+    const op = m[1] || ">=";
+    const n = parseFloat(m[2]);
+    switch (op) {
+      case ">": return (v) => Number.isFinite(v) && v > n;
+      case "<": return (v) => Number.isFinite(v) && v < n;
+      case ">=": return (v) => Number.isFinite(v) && v >= n;
+      case "<=": return (v) => Number.isFinite(v) && v <= n;
+      case "=": return (v) => Number.isFinite(v) && v === n;
+    }
+  }
+  return null;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+const filterEl = (id) => document.getElementById(id);
+
+// Apply the item search + all column filters to the (cached) rows.
+function applyRowFilters(rows) {
+  const searchVal = filterEl("table-search")?.value.toLowerCase().trim() || "";
+  const buySrc = filterEl("filter-buy-source")?.value || "";
+  const sellSrc = filterEl("filter-sell-source")?.value || "";
+  const fBuyPrice = parseNumFilter(filterEl("filter-buy-price")?.value);
+  const fSellPrice = parseNumFilter(filterEl("filter-sell-price")?.value);
+  const fProfit = parseNumFilter(filterEl("filter-profit")?.value);
+  const fRoi = parseNumFilter(filterEl("filter-roi")?.value);
+  const fHold = parseNumFilter(filterEl("filter-holddays")?.value);
+  const fRoiDay = parseNumFilter(filterEl("filter-roiday")?.value);
+
+  if (
+    !searchVal && !buySrc && !sellSrc &&
+    !fBuyPrice && !fSellPrice && !fProfit && !fRoi && !fHold && !fRoiDay
+  ) {
+    return rows; // fast path — nothing to filter
+  }
+
+  return rows.filter((r) => {
+    if (searchVal && !r.item.toLowerCase().includes(searchVal)) return false;
+    if (buySrc && r.bSource !== buySrc) return false;
+    if (sellSrc && r.sSource !== sellSrc) return false;
+    if (fBuyPrice && !fBuyPrice(r.bPriceUsd)) return false;
+    if (fSellPrice && !fSellPrice(r.sPriceUsd)) return false;
+    if (fProfit && !fProfit(r.profitUsd)) return false;
+    if (fRoi && !fRoi(r.profitPerc)) return false;
+    if (fHold && !fHold(r.holdDays ?? NaN)) return false;
+    if (fRoiDay && !fRoiDay(r.roiPerDay ?? NaN)) return false;
+    return true;
+  });
+}
+
+// Rebuild the Acquired/Sold dropdowns from the sources present in the data,
+// preserving the current selection when it still exists.
+function populateSourceFilters(rows) {
+  const fill = (sel, values) => {
+    if (!sel) return;
+    const prev = sel.value;
+    const opts = ['<option value="">All markets</option>'].concat(
+      [...values].sort((a, b) => a.localeCompare(b))
+        .map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`),
+    );
+    sel.innerHTML = opts.join("");
+    if (prev && values.has(prev)) sel.value = prev;
+  };
+
+  const buySources = new Set();
+  const sellSources = new Set();
+  for (const r of rows) {
+    if (r.bSource) buySources.add(r.bSource);
+    if (r.sSource) sellSources.add(r.sSource);
+  }
+  fill(filterEl("filter-buy-source"), buySources);
+  fill(filterEl("filter-sell-source"), sellSources);
+}
+
+// Highlight inputs/selects that currently have an active filter.
+function updateFilterActiveStates() {
+  const ids = [
+    "filter-buy-source", "filter-sell-source", "filter-buy-price",
+    "filter-sell-price", "filter-profit", "filter-roi",
+    "filter-holddays", "filter-roiday",
+  ];
+  for (const id of ids) {
+    const el = filterEl(id);
+    if (!el) continue;
+    el.classList.toggle("filter-active", !!el.value.trim());
+  }
+}
+
+// Reset every column filter (leaves the item search box untouched).
+function clearAllFilters() {
+  for (const id of [
+    "filter-buy-source", "filter-sell-source", "filter-buy-price",
+    "filter-sell-price", "filter-profit", "filter-roi",
+    "filter-holddays", "filter-roiday",
+  ]) {
+    const el = filterEl(id);
+    if (el) el.value = "";
+  }
+  updateFilterActiveStates();
+}
+
+// Sticky filter row: pin it directly under the (variable-height) header row.
+function positionFilterRow() {
+  const table = document.getElementById("transactions-table");
+  const headRow = table?.querySelector("thead tr:first-child");
+  const filterRow = table?.querySelector("thead tr.filter-row");
+  if (!headRow || !filterRow) return;
+  const top = headRow.offsetHeight + "px";
+  filterRow.querySelectorAll("td").forEach((td) => (td.style.top = top));
+}
+
 export function initTable(state) {
   document.getElementById("report-start-month")?.addEventListener("change", () => { cachedRowsData = null; cachedTRs.clear(); renderTable(state); });
   document.getElementById("report-end-month")?.addEventListener("change", () => { cachedRowsData = null; cachedTRs.clear(); renderTable(state); });
@@ -30,6 +169,39 @@ export function initTable(state) {
   document.getElementById("show-roi-day-checkbox")?.addEventListener("change", () => { updateColumnVisibility(); });
   document.getElementById("table-search")?.addEventListener("click", (ev) => ev.stopPropagation());
   document.getElementById("table-search")?.addEventListener("input", () => { cachedTRs.clear(); renderTable(state, true); });
+
+  // Column filters (Acquired/Sold market + numeric comparators). All re-render
+  // from the cached rows (no currency recompute), reset to page 1, and keep the
+  // scroll position. Clicks are stopped so they don't reach the sort handler.
+  const onFilterChange = () => {
+    updateFilterActiveStates();
+    currentPage = 1;
+    cachedTRs.clear();
+    renderTable(state, true);
+  };
+  const numericFilterIds = [
+    "filter-buy-price", "filter-sell-price", "filter-profit",
+    "filter-roi", "filter-holddays", "filter-roiday",
+  ];
+  for (const id of numericFilterIds) {
+    const el = document.getElementById(id);
+    el?.addEventListener("input", onFilterChange);
+    el?.addEventListener("click", (ev) => ev.stopPropagation());
+  }
+  for (const id of ["filter-buy-source", "filter-sell-source"]) {
+    const el = document.getElementById(id);
+    el?.addEventListener("change", onFilterChange);
+    el?.addEventListener("click", (ev) => ev.stopPropagation());
+  }
+  document.getElementById("btn-clear-filters")?.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    clearAllFilters();
+    currentPage = 1;
+    cachedTRs.clear();
+    renderTable(state, true);
+  });
+  window.addEventListener("resize", positionFilterRow);
+  requestAnimationFrame(positionFilterRow);
 
   // GPU: disable hover/transition during scroll
   const scrollContainer = document.querySelector('.table-scroll-container');
@@ -762,10 +934,9 @@ export async function renderTable(state, preserveScroll = false) {
   const tbody = document.getElementById("table-body");
   const profitBadge = document.getElementById("ui-total-profit");
 
-  // FAST PATH: cached data (sort/page change only)
+  // FAST PATH: cached data (sort/page/filter change only)
   if (cachedRowsData) {
-    const searchVal = document.getElementById("table-search")?.value.toLowerCase().trim() || "";
-    let dataToRender = searchVal ? cachedRowsData.filter(r => r.item.toLowerCase().includes(searchVal)) : cachedRowsData;
+    let dataToRender = applyRowFilters(cachedRowsData);
 
     cachedTotalProfit = 0;
     for (const row of dataToRender) cachedTotalProfit += row.profitUsd;
@@ -780,9 +951,10 @@ export async function renderTable(state, preserveScroll = false) {
 
     profitBadge.textContent = (cachedTotalProfit >= 0 ? "+$" : "-$") + Math.abs(cachedTotalProfit).toFixed(2);
     profitBadge.className = "profit-badge " + (cachedTotalProfit >= 0 ? "pos" : "neg");
-    
+
     updateStatsBar(dataToRender);
     updateColumnVisibility();
+    positionFilterRow();
     return;
   }
 
@@ -794,6 +966,7 @@ export async function renderTable(state, preserveScroll = false) {
     profitBadge.className = "profit-badge";
     const statsBar = document.getElementById("stats-bar");
     if (statsBar) statsBar.style.display = "none";
+    positionFilterRow();
     return;
   }
 
@@ -857,8 +1030,9 @@ export async function renderTable(state, preserveScroll = false) {
   });
 
   cachedRowsData = rowsData;
-  const searchVal = document.getElementById("table-search")?.value.toLowerCase().trim() || "";
-  let dataToRender = searchVal ? cachedRowsData.filter(r => r.item.toLowerCase().includes(searchVal)) : cachedRowsData;
+  populateSourceFilters(cachedRowsData);
+  updateFilterActiveStates();
+  let dataToRender = applyRowFilters(cachedRowsData);
 
   cachedTotalProfit = 0;
   for (const row of dataToRender) cachedTotalProfit += row.profitUsd;
@@ -873,9 +1047,10 @@ export async function renderTable(state, preserveScroll = false) {
 
   profitBadge.textContent = (cachedTotalProfit >= 0 ? "+$" : "-$") + Math.abs(cachedTotalProfit).toFixed(2);
   profitBadge.className = "profit-badge " + (cachedTotalProfit >= 0 ? "pos" : "neg");
-  
+
   updateStatsBar(dataToRender);
   updateColumnVisibility();
+  positionFilterRow();
 }
 
 export function updateColumnVisibility() {
@@ -898,4 +1073,8 @@ export function updateColumnVisibility() {
   const tdRois = document.querySelectorAll(".td-roiday");
   tdHolds.forEach(td => td.style.display = showDaysHeld ? "" : "none");
   tdRois.forEach(td => td.style.display = showRoiDay ? "" : "none");
+
+  // Keep the matching filter cells in sync with their columns.
+  document.querySelectorAll(".filt-holddays").forEach(td => td.style.display = showDaysHeld ? "" : "none");
+  document.querySelectorAll(".filt-roiday").forEach(td => td.style.display = showRoiDay ? "" : "none");
 }

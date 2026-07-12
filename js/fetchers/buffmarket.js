@@ -73,6 +73,7 @@ export class BuffMarketFetcher extends BaseFetcher {
 
       if (items.length === 0) break;
 
+      const before = allTxs.length;
       for (const raw of items) {
         if (raw.state !== "SUCCESS") continue;
 
@@ -130,6 +131,8 @@ export class BuffMarketFetcher extends BaseFetcher {
           }),
         );
       }
+
+      if (this.reachedCutoff(allTxs.slice(before))) break;
 
       // Pagination Check
       // Go: if page >= response.Data.TotalPages

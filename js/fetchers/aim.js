@@ -144,6 +144,7 @@ export class AimMarketFetcher extends BaseFetcher {
         const items = res.json?.data?.offer_steam_item || [];
         if (!Array.isArray(items) || items.length === 0) break;
 
+        const before = all.length;
         for (const it of items) {
           // Use price_USD directly (base currency). Defaults to 0 if not present.
           const usd = it.price_USD ? parseFloat(it.price_USD) : 0;
@@ -168,6 +169,7 @@ export class AimMarketFetcher extends BaseFetcher {
           );
         }
 
+        if (this.reachedCutoff(all.slice(before))) break;
         if (items.length < limit) break;
         offset += limit;
         await this.sleep(400);

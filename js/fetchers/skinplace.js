@@ -86,6 +86,7 @@ export class SkinPlaceFetcher extends BaseFetcher {
         break;
       }
 
+      const before = allTxs.length;
       for (const tx of data.data) {
         if (tx.state !== "finished") continue;
         if (!tx.items) continue;
@@ -118,6 +119,7 @@ export class SkinPlaceFetcher extends BaseFetcher {
         }
       }
 
+      if (this.reachedCutoff(allTxs.slice(before))) break;
       if (data.data.length < limit) {
         break;
       }
@@ -150,6 +152,7 @@ export class SkinPlaceFetcher extends BaseFetcher {
         break;
       }
 
+      const before = allTxs.length;
       for (const tx of data.data) {
         if (tx.state !== "finished") continue;
         const item = tx.item;
@@ -179,6 +182,7 @@ export class SkinPlaceFetcher extends BaseFetcher {
         );
       }
 
+      if (this.reachedCutoff(allTxs.slice(before))) break;
       if (data.data.length < limit) {
         break;
       }

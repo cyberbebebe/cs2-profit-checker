@@ -49,6 +49,7 @@ export class CSFloatFetcher extends BaseFetcher {
 
       if (!data || !data.trades || data.trades.length === 0) break;
 
+      const before = items.length;
       for (const trade of data.trades) {
         const item = trade.contract.item;
         const rawPrice = trade.contract.price / 100.0;
@@ -81,6 +82,7 @@ export class CSFloatFetcher extends BaseFetcher {
         );
       }
 
+      if (this.reachedCutoff(items.slice(before))) break;
       if (data.trades.length < limit) break;
       page++;
       await this.sleep(1000);

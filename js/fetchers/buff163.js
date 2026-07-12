@@ -78,6 +78,7 @@ export class Buff163Fetcher extends BaseFetcher {
 
       if (items.length === 0) break;
 
+      const before = allTxs.length;
       for (const raw of items) {
 
         const goodsId = raw.goods_id;
@@ -133,6 +134,7 @@ export class Buff163Fetcher extends BaseFetcher {
         );
       }
 
+      if (this.reachedCutoff(allTxs.slice(before))) break;
       if (page >= data.data.total_page) {
         break;
       }

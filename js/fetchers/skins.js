@@ -23,6 +23,12 @@ export class SkinsFetcher extends BaseFetcher {
     this._tokenPromise = null;
   }
 
+  resetCache() {
+    // Keep the resolved session token; only drop the memoized history so a
+    // re-sync actually re-fetches (with the current cutoff).
+    this._historyPromise = null;
+  }
+
   async getSessionToken() {
     try {
       if (typeof chrome === "undefined") {
@@ -263,6 +269,7 @@ export class SkinsFetcher extends BaseFetcher {
           break;
         }
 
+        const before = allSkinsTxs.length;
         for (const tx of data.data) {
           const status = tx.status ? tx.status.toUpperCase() : "";
           if (status !== "COMPLETED" && status !== "HOLD") {
@@ -304,6 +311,8 @@ export class SkinsFetcher extends BaseFetcher {
             })
           );
         }
+
+        if (this.reachedCutoff(allSkinsTxs.slice(before))) break;
 
         if (data.pagination) {
           const { page: currPage, totalPages } = data.pagination;

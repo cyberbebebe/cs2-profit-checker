@@ -270,6 +270,7 @@ export class C5GameFetcher extends BaseFetcher {
           const items = data.data.list || [];
           if (items.length === 0) break;
 
+          const before = allTxs.length;
           for (const order of items) {
             // Skip failed orders entirely
             if (order.statusName === "FAILED") continue;
@@ -312,6 +313,7 @@ export class C5GameFetcher extends BaseFetcher {
             }
           }
 
+          if (this.reachedCutoff(allTxs.slice(before))) break;
           if (page >= data.data.pages || items.length < limit) break;
 
           page++;

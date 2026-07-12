@@ -102,6 +102,10 @@ body {
 .full-width { width: 100%; }
 .action-btn { font-size: 15px; padding: 10px; margin-top: 10px; }
 
+/* Full Resync: keep the secondary (ghost) background but match the primary
+   Sync button's text style — bright white, bold, same size. */
+#btn-full-resync { color: #fff; font-weight: 600; font-size: 15px; }
+
 /* Sessions List */
 .sessions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;}
 .session-pill {
@@ -234,6 +238,30 @@ select.glass-input option { background-color: var(--bg-dark); color: #fff; }
 
 
 .num-col { text-align: left; }
+
+/* Per-column filter row (sits sticky just under the header row) */
+.glass-table tr.filter-row td {
+  position: sticky; z-index: 9; background-color: #18181c;
+  padding: 6px 10px; border-bottom: 1px solid #2d2d33;
+  /* `top` is set from JS to match the header row's height */
+}
+.glass-table tr.filter-row:hover td { background-color: #18181c; }
+.filter-input {
+  width: 100%; box-sizing: border-box; height: 30px;
+  padding: 4px 8px; font-size: 12px; font-weight: normal; margin: 0; min-width: 0;
+}
+/* Selects: smaller text so the market name isn't crowded against the dropdown
+   caret, with padding matching the numeric inputs (overrides select.glass-input). */
+select.filter-input {
+  font-size: 11px; padding: 4px 8px; text-overflow: ellipsis;
+}
+.filter-input.filter-active { border-color: var(--accent-primary); }
+.filter-clear-btn {
+  background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted);
+  border-radius: 6px; padding: 5px 8px; font-size: 11px; cursor: pointer; white-space: nowrap;
+  transition: 0.2s; width: 100%;
+}
+.filter-clear-btn:hover { color: #fff; border-color: var(--accent-primary); }
 .td-profit, .td-holddays, .td-roiday { font-weight: 600; font-family: inherit; font-size: 14px; color: #fff;}
 .pos-profit { color: #86efac !important; }
 .neg-profit { color: #fda4af !important; }

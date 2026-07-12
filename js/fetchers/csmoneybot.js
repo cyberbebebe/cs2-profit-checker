@@ -27,6 +27,10 @@ export class CSMoneyBotFetcher extends BaseFetcher {
     this.cachedHistory = null;
   }
 
+  resetCache() {
+    this.cachedHistory = null;
+  }
+
   async checkSession() {
     try {
       const resp = await fetch("https://cs.money/get_user_data", {
@@ -86,10 +90,12 @@ export class CSMoneyBotFetcher extends BaseFetcher {
 
         if (data.length === 0) break;
 
+        const before = allTxs.length;
         for (const raw of data) {
           allTxs.push(...this.convertCSMoneyBotTx(raw));
         }
 
+        if (this.reachedCutoff(allTxs.slice(before))) break;
         if (data.length < limit) break;
         offset += limit;
 

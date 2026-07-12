@@ -94,7 +94,7 @@ function reflectDataset(state, startInput, endInput, label = "Loaded saved data"
 
   document.getElementById("panel-reports")?.classList.remove("disabled");
   const fetchBtn = document.getElementById("btn-fetch-all");
-  if (fetchBtn) fetchBtn.innerHTML = "<span>🔄 Sync Data Again</span>";
+  if (fetchBtn) fetchBtn.innerHTML = "<span>🔄 Sync New Data</span>";
   const pt = document.getElementById("progress-text");
   if (pt) {
     const when = state.savedAt

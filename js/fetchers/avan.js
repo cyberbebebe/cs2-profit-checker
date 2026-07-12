@@ -55,6 +55,7 @@ export class AvanMarketFetcher extends BaseFetcher {
     try {
       const all = [];
       let page = 1;
+      let reachedCutoff = false;
 
       while (true) {
         const res = await this.apiGet(
@@ -71,6 +72,14 @@ export class AvanMarketFetcher extends BaseFetcher {
           if (tradeId === undefined || tradeId === null) continue;
 
           const txDate = trade.createdAt ? new Date(trade.createdAt) : new Date();
+
+          // Incremental: trades come newest-first, so the first one older than
+          // the cutoff means we've covered the fresh window. Stop here — before
+          // the per-trade item fetch below — so we don't re-pull known history.
+          if (this.sinceCutoff && txDate.getTime() < this.sinceCutoff.getTime()) {
+            reachedCutoff = true;
+            break;
+          }
 
           const itemsRes = await this.apiGet(
             `https://avan.market/v1/api/users/my-profile-trade-items?tradeId=${tradeId}`,
@@ -107,6 +116,7 @@ export class AvanMarketFetcher extends BaseFetcher {
           await this.sleep(250);
         }
 
+        if (reachedCutoff) break;
         if (trades.length < pageSize) break;
         page++;
         if (page > 200) break; // safety cap
