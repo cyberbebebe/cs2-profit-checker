@@ -177,6 +177,13 @@
             <span class="checkbox-label">Show ROI/Day Column</span>
           </label>
         </div>
+        <div class="control-box toggle-row">
+          <label for="recheck-recent-checkbox" class="modern-checkbox-wrap" title="On the next sync, re-fetch the last 8 days of history for every selected market so reversed/cancelled trade offers are picked up (removed rows drop, status/price updates apply).">
+            <input type="checkbox" id="recheck-recent-checkbox" />
+            <div class="checkbox-visual"></div>
+            <span class="checkbox-label">Re-check last 8 days (catch reversals)</span>
+          </label>
+        </div>
 
         <button id="btn-fetch-all" class="btn-primary full-width action-btn">⚡ Sync Market Data</button>
         <button id="btn-full-resync" class="btn-ghost full-width" style="margin-top: 10px;" title="Ignore the local cache and re-download the complete transaction history for every selected market. Use this for a fresh market or to recover after errors.">🧹 Full Resync (all history)</button>

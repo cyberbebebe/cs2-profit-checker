@@ -26,6 +26,10 @@ function startOfUtcDay(ms) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
+// "Re-check last 8 days" widens the incremental cutoff to catch trades that get
+// reversed/cancelled after settling, behind the normal cutoff.
+const REVERSAL_LOOKBACK_MS = 8 * 24 * 60 * 60 * 1000;
+
 // Newest cached-transaction time for one source (across sales + buys), or null
 // when the source has nothing stored yet.
 function newestCachedTime(state, source) {
@@ -117,6 +121,12 @@ export function initFetch(state) {
     const forceFull = state.forceFullResync === true;
     state.forceFullResync = false;
 
+    const recheckRecent =
+      document.getElementById("recheck-recent-checkbox")?.checked === true;
+    const lookbackCutoffMs = startOfUtcDay(
+      Date.now() - REVERSAL_LOOKBACK_MS,
+    ).getTime();
+
     // 3. Decide per source whether this is an incremental or a full fetch, and
     //    (for incremental) the cutoff = 00:00 UTC of its newest cached txn.
     //    Computed BEFORE we touch the arrays, since it reads the cached data.
@@ -128,9 +138,13 @@ export function initFetch(state) {
         f.supportsIncremental !== false &&
         !prevFailed.has(f.name) &&
         newest !== null;
+      let cutoff = incremental ? startOfUtcDay(newest) : null;
+      if (cutoff && recheckRecent && lookbackCutoffMs < cutoff.getTime()) {
+        cutoff = new Date(lookbackCutoffMs);
+      }
       plan[f.name] = {
         mode: incremental ? "incremental" : "full",
-        cutoff: incremental ? startOfUtcDay(newest) : null,
+        cutoff,
       };
     }
 
@@ -168,7 +182,9 @@ export function initFetch(state) {
       ? "Full resync — re-downloading all history..."
       : isPartial
         ? "Retrying failed sources..."
-        : "Starting...";
+        : recheckRecent
+          ? "Syncing + re-checking last 8 days..."
+          : "Starting...";
     progressFill.style.width = "5%";
     targetFetchers.forEach((f) => setDot(f.name, "unknown")); // reset to idle
 

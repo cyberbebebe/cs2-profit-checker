@@ -55,14 +55,20 @@ export class C5GameFetcher extends BaseFetcher {
     }
   }
 
-  // Open a background tab and wait until it's ready to serve API calls.
+  // Open a background tab and poll the auth probe until it's ready to serve API
+  // calls, returning early instead of always waiting a fixed delay (capped).
   async _openTempTab() {
     const newTab = await chrome.tabs.create({
       url: "https://www.c5game.com/en/user/user/",
       active: false,
     });
     await this.waitForLoad(newTab.id);
-    await this.sleep(7500); // let the SPA boot (auth + request layer)
+
+    const deadline = Date.now() + 12000;
+    while (Date.now() < deadline) {
+      if (await this._isAuthed(newTab.id)) break;
+      await this.sleep(400);
+    }
     return newTab.id;
   }
 
@@ -219,9 +225,8 @@ export class C5GameFetcher extends BaseFetcher {
         const data = res.json;
         if (!data || data.success !== true) return { amount: 0, currency: "CNY" };
 
-        const cny = parseFloat(data.data.moneyAmount || 0);
-        const frozen = parseFloat(data.data.tradeSettleAmount || 0);
-        return { amount: cny + frozen, currency: "CNY" };
+        const total = parseFloat(data.data.totalAmount || 0);
+        return { amount: total, currency: "CNY" };
       });
     } catch (e) {
       console.error("[C5Game] Balance error:", e);
