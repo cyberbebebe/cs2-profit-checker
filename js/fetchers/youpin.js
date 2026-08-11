@@ -3,41 +3,62 @@ import { BaseFetcher, Transaction } from "./base.js";
 export class YoupinFetcher extends BaseFetcher {
   constructor() {
     super("Youpin");
-    this.headers = null; // Зберігаємо готовий набір хедерів
+    this.headers = null;
+    this._sessionPromise = null; // dedupes concurrent tab-opening callers
   }
 
-  // 1. Отримання токенів (це єдиний момент, де потрібна вкладка)
-  async checkSession() {
+  // Verify a candidate header set still authenticates (GetUserInfo → Code 0).
+  async _isSessionValid(headers) {
+    if (!headers) return false;
     try {
-      let tabs = await chrome.tabs.query({ url: "*://youpin898.com/*" });
-      let tabId = null;
-      let shouldCloseTab = false;
+      const resp = await fetch(
+        "https://api.youpin898.com/api/user/Account/GetUserInfo",
+        { method: "GET", headers },
+      );
+      if (!resp.ok) return false;
+      const json = await resp.json().catch(() => null);
+      return !!(json && json.Code === 0);
+    } catch (e) {
+      return false;
+    }
+  }
 
-      if (tabs.length === 0) {
-        const newTab = await chrome.tabs.create({
-          url: "https://youpin898.com/market",
-          active: false,
-        });
-        tabId = newTab.id;
-        shouldCloseTab = true;
+  // Read uu_token (cookie) + WEB_UK (localStorage) from a youpin tab and build
+  // the header set. Reuses an open tab; opens a hidden one only if none exists.
+  async _readSessionFromPage() {
+    const tabs = await chrome.tabs.query({ url: "*://youpin898.com/*" });
+    let tabId = null;
+    let shouldCloseTab = false;
 
-        await new Promise((resolve) => {
-          const listener = (id, info) => {
-            if (id === tabId && info.status === "complete") {
-              chrome.tabs.onUpdated.removeListener(listener);
-              resolve();
-            }
-          };
-          chrome.tabs.onUpdated.addListener(listener);
-          setTimeout(() => resolve(), 8000);
-        });
-        await new Promise((r) => setTimeout(r, 2000));
-      } else {
-        tabId = tabs[0].id;
-      }
+    if (tabs.length === 0) {
+      const newTab = await chrome.tabs.create({
+        url: "https://youpin898.com/market",
+        active: false,
+      });
+      tabId = newTab.id;
+      shouldCloseTab = true;
 
+      await new Promise((resolve) => {
+        const listener = (id, info) => {
+          if (id === tabId && info.status === "complete") {
+            chrome.tabs.onUpdated.removeListener(listener);
+            resolve();
+          }
+        };
+        chrome.tabs.onUpdated.addListener(listener);
+        setTimeout(() => {
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }, 8000);
+      });
+      await this.sleep(2000); // let the SPA populate localStorage
+    } else {
+      tabId = tabs[0].id;
+    }
+
+    try {
       const results = await chrome.scripting.executeScript({
-        target: { tabId: tabId },
+        target: { tabId },
         func: () => {
           const getCookie = (name) => {
             const value = `; ${document.cookie}`;
@@ -53,12 +74,9 @@ export class YoupinFetcher extends BaseFetcher {
       });
 
       const data = results?.[0]?.result;
-
-      if (shouldCloseTab) await chrome.tabs.remove(tabId);
-
       if (data?.uu_token && data?.web_uk) {
-        let auth = decodeURIComponent(data.uu_token);
-        this.headers = {
+        const auth = decodeURIComponent(data.uu_token);
+        return {
           "Accept-Encoding": "gzip",
           "App-Version": "5.26.0",
           "App-Type": "1",
@@ -67,10 +85,41 @@ export class YoupinFetcher extends BaseFetcher {
           platform: "pc",
           uk: data.web_uk,
         };
-
-        return true;
       }
-      return false;
+      return null;
+    } finally {
+      if (shouldCloseTab) {
+        try {
+          await chrome.tabs.remove(tabId);
+        } catch (e) {
+          /* tab already gone */
+        }
+      }
+    }
+  }
+
+  // Reuse the cached session if it's still active (no tab); otherwise read it
+  // from the page. Concurrent callers share one in-flight resolution so a Sync's
+  // getSales + getBuys never open two background tabs.
+  async ensureSession() {
+    if (this.headers && (await this._isSessionValid(this.headers))) {
+      return this.headers;
+    }
+    if (this._sessionPromise) return this._sessionPromise;
+
+    this._sessionPromise = this._readSessionFromPage();
+    try {
+      this.headers = await this._sessionPromise;
+      return this.headers;
+    } finally {
+      this._sessionPromise = null;
+    }
+  }
+
+  async checkSession() {
+    try {
+      const headers = await this.ensureSession();
+      return !!headers;
     } catch (e) {
       console.error("[Youpin] Session check failed:", e);
       return false;
@@ -79,12 +128,13 @@ export class YoupinFetcher extends BaseFetcher {
 
   async getBalance() {
     try {
-      if (!this.headers) return { amount: 0, currency: "USD" };
+      const headers = await this.ensureSession();
+      if (!headers) return { amount: 0, currency: "USD" };
       const resp = await fetch(
         "https://api.youpin898.com/api/user/Account/GetUserInfo",
         {
           method: "GET",
-          headers: this.headers,
+          headers,
         },
       );
 
@@ -94,7 +144,32 @@ export class YoupinFetcher extends BaseFetcher {
         return { amount: 0, currency: "USD" };
       }
 
-      const cny = parseFloat(json.Data.TotalMoney || 0);
+      let cny = parseFloat(json.Data.TotalMoney || 0);
+
+      let purchaseBalance = 0;
+      try {
+        const purchaseResp = await fetch(
+          "https://api.youpin898.com/api/youpin/bff/new/commodity/v3/purchase/user/info",
+          {
+            method: "GET",
+            headers,
+          },
+        );
+        const purchaseJson = await purchaseResp.json();
+        if (
+          purchaseJson &&
+          purchaseJson.code === 0 &&
+          purchaseJson.data &&
+          purchaseJson.data.balance !== undefined
+        ) {
+          purchaseBalance = parseFloat(purchaseJson.data.balance || 0) / 100.0;
+        }
+      } catch (e) {
+        console.warn("[Youpin] Purchase balance check failed:", e);
+        purchaseBalance = 0;
+      }
+
+      cny += purchaseBalance;
 
       return { amount: cny, currency: "CNY" };
     } catch (e) {
@@ -111,8 +186,9 @@ export class YoupinFetcher extends BaseFetcher {
   }
 
   async fetchHistory(mode) {
-    if (!this.headers) {
-      console.warn("[Youpin] No headers. Check session first.");
+    const headers = await this.ensureSession();
+    if (!headers) {
+      console.warn("[Youpin] No valid session — check session first.");
       return [];
     }
 
@@ -136,7 +212,7 @@ export class YoupinFetcher extends BaseFetcher {
       try {
         const resp = await fetch(url, {
           method: "POST",
-          headers: this.headers,
+          headers,
           body: JSON.stringify(payload),
         });
 
@@ -152,6 +228,7 @@ export class YoupinFetcher extends BaseFetcher {
 
         if (orderList.length === 0) break;
 
+        const before = allTxs.length;
         for (const order of orderList) {
           let rawTime = order.finishOrderTime || 0;
           if (
@@ -163,44 +240,54 @@ export class YoupinFetcher extends BaseFetcher {
           const txDate = new Date(rawTime);
 
           const products = order.productDetailList || [];
+          if (products.length === 0) continue;
 
-          // BULK LOGIC START
-          if (products.length > 3) {
-            const firstItem = products[0];
-            const count = products.commodityNum;
-            const name =
-              firstItem.commodityHashName || firstItem.CommodityHashName;
+          // `commodityNum` is the true number of units in the order. For batch
+          // sales/buys of identical fungible items (e.g. 78 cases) the API only
+          // returns a few sample products in productDetailList, so we expand the
+          // order into `commodityNum` individual unit transactions.
+          const qty = parseInt(order.commodityNum) || products.length || 1;
 
-            const bulkName = `${name} x${count}`;
+          if (qty > products.length) {
+            const first = products[0];
+            const name = first.commodityHashName || first.CommodityHashName;
 
-            let totalCNY =
+            const totalCNY =
               (order.totalAmount ||
                 order.commodityAmount ||
                 order.payAmount ||
                 0) / 100.0;
+            // Per-unit price from the order total, with the item price as fallback
+            let unitCNY =
+              totalCNY > 0 ? totalCNY / qty : (first.price || 0) / 100.0;
+            if (mode === "Sell") unitCNY = unitCNY * 0.99;
+            unitCNY = parseFloat(unitCNY.toFixed(2));
 
-            if (mode === "Sell") totalCNY = totalCNY * 0.99;
+            const floatVal = parseFloat(first.abrade || 0);
+            const phase = first.dopplerTitle || "";
+            const pattern = first.paintSeed || -1;
 
-            allTxs.push(
-              new Transaction({
-                source: "Youpin",
-                type: mode === "Buy" ? "BUY" : "SELL",
-                tx_id: order.orderNo,
-                asset_id: "BATCH",
-                item_name: bulkName,
-                price: parseFloat(totalCNY.toFixed(2)),
-                currency: "CNY",
-                created_at: txDate,
-                verified_at: txDate,
-                float_val: 0,
-                pattern: -1,
-                phase: "",
-              }),
-            );
+            for (let i = 0; i < qty; i++) {
+              allTxs.push(
+                new Transaction({
+                  source: "Youpin",
+                  type: mode === "Buy" ? "BUY" : "SELL",
+                  tx_id: `${order.orderNo}#${i + 1}`,
+                  asset_id: "",
+                  item_name: name,
+                  price: unitCNY,
+                  currency: "CNY",
+                  created_at: txDate,
+                  verified_at: txDate,
+                  float_val: floatVal,
+                  pattern: pattern,
+                  phase: phase,
+                }),
+              );
+            }
 
             continue;
           }
-          // BULK LOGIC END
 
           for (const item of products) {
             let priceCNY = item.price / 100.0;
@@ -238,6 +325,7 @@ export class YoupinFetcher extends BaseFetcher {
           }
         }
 
+        if (this.reachedCutoff(allTxs.slice(before))) break;
         if (orderList.length < pageSize) break;
         page++;
         await this.sleep(500);

@@ -37,7 +37,7 @@ export class CSMoneyFetcher extends BaseFetcher {
 
   async getBalance() {
     try {
-      const resp = await fetch("https://cs.money/market/sell/", {
+      const resp = await fetch("https://cs.money/market/buy/", {
         method: "GET",
       });
       const text = await resp.text();
@@ -100,12 +100,14 @@ export class CSMoneyFetcher extends BaseFetcher {
 
         if (data.length === 0) break;
 
+        const before = allTxs.length;
         for (const raw of data) {
           const parsedTxs = this.convertCSMoneyTx(raw);
           allTxs.push(...parsedTxs);
         }
 
         // Pagination
+        if (this.reachedCutoff(allTxs.slice(before))) break;
         if (data.length < 100) break;
 
         const lastItem = data[data.length - 1];

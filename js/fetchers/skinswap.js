@@ -6,6 +6,10 @@ export class SkinSwapFetcher extends BaseFetcher {
     this._historyPromise = null;
   }
 
+  resetCache() {
+    this._historyPromise = null;
+  }
+
   async checkSession() {
     try {
       const data = await this.fetchWithAuth(
@@ -41,6 +45,7 @@ export class SkinSwapFetcher extends BaseFetcher {
 
       if (!data || !data.data || data.data.length === 0) break;
 
+      const before = allTx.length;
       for (const tx of data.data) {
         if (tx.status !== "completed") continue;
         if (!tx.siteItems || tx.siteItems.length === 0) continue;
@@ -64,10 +69,11 @@ export class SkinSwapFetcher extends BaseFetcher {
         );
       }
 
+      if (this.reachedCutoff(allTx.slice(before))) break;
       offset += limit;
       if (typeof data.total === "number" && offset >= data.total) break;
       if (data.data.length < limit) break;
-      
+
       await this.sleep(800);
     }
 

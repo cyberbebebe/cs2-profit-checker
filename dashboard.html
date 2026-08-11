@@ -23,7 +23,8 @@
     <aside class="sidebar glass-panel">
       <header class="main-header">
         <h1>CS2 Profit Checker</h1>
-        <a href="https://github.com/cyberbebebe/" target="_blank" class="github-link">GitHub<span>↗</span></a>
+        <a href="https://github.com/cyberbebebe/cs2-profit-checker" target="_blank"
+          class="github-link">GitHub<span>↗</span></a>
       </header>
 
       <hr class="divider" />
@@ -52,7 +53,7 @@
           <label class="session-pill" id="card-csmoney" title="CSMoney">
             <input type="checkbox" id="toggle-csmoney" checked class="hidden-check" />
             <span class="status-dot status-unknown"></span>
-            <span class="pill-name">CSMoney</span>
+            <span class="pill-name">CSMoney (P2P)</span>
           </label>
 
           <label class="session-pill" id="card-buff163" title="Buff163">
@@ -65,6 +66,12 @@
             <input type="checkbox" id="toggle-youpin" checked class="hidden-check" />
             <span class="status-dot status-unknown"></span>
             <span class="pill-name">Youpin</span>
+          </label>
+
+          <label class="session-pill" id="card-c5game" title="C5Game">
+            <input type="checkbox" id="toggle-c5game" checked class="hidden-check" />
+            <span class="status-dot status-unknown"></span>
+            <span class="pill-name">C5Game</span>
           </label>
 
           <label class="session-pill" id="card-skinswap" title="SkinSwap">
@@ -105,7 +112,19 @@
           <label class="session-pill" id="card-csmoneybot" title="CSMoneyBot">
             <input type="checkbox" id="toggle-csmoneybot" checked class="hidden-check" />
             <span class="status-dot status-unknown"></span>
-            <span class="pill-name">CSMoneyBot</span>
+            <span class="pill-name">CSMoney (Bot)</span>
+          </label>
+
+          <label class="session-pill" id="card-avan" title="Avan Market">
+            <input type="checkbox" id="toggle-avan" checked class="hidden-check" />
+            <span class="status-dot status-unknown"></span>
+            <span class="pill-name">Avan</span>
+          </label>
+
+          <label class="session-pill" id="card-aim" title="Aim Market">
+            <input type="checkbox" id="toggle-aim" checked class="hidden-check" />
+            <span class="status-dot status-unknown"></span>
+            <span class="pill-name">Aim</span>
           </label>
 
           <label class="session-pill" id="card-steam" title="Steam">
@@ -126,24 +145,51 @@
 
       <!-- Filters & Data -->
       <div class="sidebar-section">
-        <h2>Data Engine</h2>
-        <div class="control-box">
-          <label>Period Start</label>
-          <input type="month" id="report-start-month" class="glass-input full-width" />
-        </div>
-        <div class="control-box">
-          <label>Period End</label>
-          <input type="month" id="report-end-month" class="glass-input full-width" />
+        <h2>Dashboard time period & settings</h2>
+        <div class="control-row">
+          <div class="control-box">
+            <label>Start</label>
+            <input type="month" id="report-start-month" class="glass-input full-width" />
+          </div>
+          <div class="control-box">
+            <label>End</label>
+            <input type="month" id="report-end-month" class="glass-input full-width" />
+          </div>
         </div>
         <div class="control-box toggle-row">
           <label for="include-buys-checkbox" class="modern-checkbox-wrap">
-            <input type="checkbox" id="include-buys-checkbox" checked />
+            <input type="checkbox" id="include-buys-checkbox" />
             <div class="checkbox-visual"></div>
             <span class="checkbox-label">Show Unsold Items</span>
           </label>
         </div>
+        <div class="control-box toggle-row">
+          <label for="show-days-held-checkbox" class="modern-checkbox-wrap">
+            <input type="checkbox" id="show-days-held-checkbox" checked />
+            <div class="checkbox-visual"></div>
+            <span class="checkbox-label">Show Days Held Column</span>
+          </label>
+        </div>
+        <div class="control-box toggle-row">
+          <label for="show-roi-day-checkbox" class="modern-checkbox-wrap">
+            <input type="checkbox" id="show-roi-day-checkbox" checked />
+            <div class="checkbox-visual"></div>
+            <span class="checkbox-label">Show ROI/Day Column</span>
+          </label>
+        </div>
+        <div class="control-box toggle-row">
+          <label for="recheck-recent-checkbox" class="modern-checkbox-wrap"
+            title="On the next sync, re-fetch the last 8 days of history for every selected market so reversed/cancelled trade offers are picked up (removed rows drop, status/price updates apply).">
+            <input type="checkbox" id="recheck-recent-checkbox" />
+            <div class="checkbox-visual"></div>
+            <span class="checkbox-label">Re-check last 8 days (catch reversals)</span>
+          </label>
+        </div>
 
         <button id="btn-fetch-all" class="btn-primary full-width action-btn">⚡ Sync Market Data</button>
+        <button id="btn-full-resync" class="btn-ghost full-width" style="margin-top: 10px;"
+          title="Ignore the local cache and re-download the complete transaction history for every selected market. Use this for a fresh market or to recover after errors.">🧹
+          Full Resync (all history)</button>
 
         <div class="progress-wrap sidebar-progress">
           <div class="progress-bar-glass">
@@ -232,6 +278,10 @@
                 <div class="export-divider"></div>
                 <button class="export-item export-item-muted" id="btn-profit-json">📋 Raw Data (JSON)</button>
                 <button class="export-item export-item-muted" id="btn-tax-json">📋 Tax Data (JSON)</button>
+                <div class="export-divider"></div>
+                <button class="export-item" id="btn-save-session">💾 Save Session (JSON)</button>
+                <button class="export-item" id="btn-load-session">📂 Load Session (JSON)</button>
+                <input type="file" id="input-load-session" accept="application/json,.json" hidden />
               </div>
             </div>
           </div>
@@ -241,7 +291,7 @@
           <table class="glass-table" id="transactions-table">
             <thead>
               <tr>
-                <th data-sort="Item" style="width: 35%;">
+                <th data-sort="Item" style="width: 26%;">
                   <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                     <span>Item<span class="sort-icon"></span></span>
                     <input type="text" id="table-search" class="glass-input" placeholder="Search..."
@@ -257,11 +307,57 @@
                 <th data-sort="Profit ($)" class="num-col" style="width: 10%;">Profit<span class="sort-icon"></span>
                 </th>
                 <th data-sort="Profit %" class="num-col" style="width: 10%;">ROI %<span class="sort-icon"></span></th>
+                <th data-sort="Days Held" class="num-col th-holddays" style="width: 8%;"
+                  title="Sold − Acquired, in days">Days Held<span class="sort-icon"></span></th>
+                <th data-sort="ROI/Day" class="num-col th-roiday" style="width: 8%;" title="ROI % per day held">
+                  ROI/Day<span class="sort-icon"></span></th>
+              </tr>
+              <tr class="filter-row">
+                <td>
+                  <button id="btn-clear-filters" class="filter-clear-btn" title="Reset all column filters">✕ Clear
+                    filters</button>
+                </td>
+                <td>
+                  <select id="filter-buy-source" class="glass-input filter-input"
+                    title="Show only items acquired on this market">
+                    <option value="">All markets</option>
+                  </select>
+                </td>
+                <td class="num-col">
+                  <input type="text" id="filter-buy-price" class="glass-input filter-input" placeholder="e.g. &gt;5"
+                    title="Filter by buy price. Examples: >5 · <10 · 5-20" />
+                </td>
+                <td>
+                  <select id="filter-sell-source" class="glass-input filter-input"
+                    title="Show only items sold on this market">
+                    <option value="">All markets</option>
+                  </select>
+                </td>
+                <td class="num-col">
+                  <input type="text" id="filter-sell-price" class="glass-input filter-input" placeholder="e.g. &gt;5"
+                    title="Filter by sell income. Examples: >5 · <10 · 5-20" />
+                </td>
+                <td class="num-col">
+                  <input type="text" id="filter-profit" class="glass-input filter-input" placeholder="e.g. &gt;0"
+                    title="Filter by profit ($). Examples: >0 · <-2 · 1-50" />
+                </td>
+                <td class="num-col">
+                  <input type="text" id="filter-roi" class="glass-input filter-input" placeholder="e.g. &gt;10"
+                    title="Filter by ROI %. Examples: >10 · <0 · 5-100" />
+                </td>
+                <td class="num-col filt-holddays">
+                  <input type="text" id="filter-holddays" class="glass-input filter-input" placeholder="e.g. &gt;7"
+                    title="Filter by days held. Examples: >7 · <30 · 1-14" />
+                </td>
+                <td class="num-col filt-roiday">
+                  <input type="text" id="filter-roiday" class="glass-input filter-input" placeholder="e.g. &gt;1"
+                    title="Filter by ROI/Day. Examples: >1 · <0 · 0.5-5" />
+                </td>
               </tr>
             </thead>
             <tbody id="table-body">
               <tr class="empty-row">
-                <td colspan="7">No synced data for this period. Click Sync Data to begin.</td>
+                <td colspan="9">No synced data for this period. Click Sync Data to begin.</td>
               </tr>
             </tbody>
           </table>
@@ -288,6 +384,27 @@
     </main>
 
   </div>
+
+  <!-- Manual match modal: link a sale to a specific purchase -->
+  <div id="manual-match-modal" class="mm-backdrop">
+    <div class="mm-dialog">
+      <div class="mm-header">
+        <div>
+          <div class="mm-title">Match a purchase to this sale</div>
+          <div class="mm-subtitle" id="mm-item-name"></div>
+        </div>
+        <button id="mm-close" class="mm-close-btn" title="Close">✕</button>
+      </div>
+      <div class="mm-toolbar">
+        <label class="mm-checkbox">
+          <input type="checkbox" id="mm-show-all" /> Show all items (not just this name)
+        </label>
+        <button id="mm-clear" class="mm-clear-btn">Clear match</button>
+      </div>
+      <div id="mm-list" class="mm-list"></div>
+    </div>
+  </div>
+
   <script type="module" src="js/dashboard.js"></script>
 </body>
 

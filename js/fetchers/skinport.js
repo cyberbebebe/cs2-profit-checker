@@ -6,6 +6,10 @@ export class SkinportFetcher extends BaseFetcher {
     this.cachedHistory = null;
   }
 
+  resetCache() {
+    this.cachedHistory = null;
+  }
+
   async checkSession() {
     try {
       const url = "https://skinport.com/api/user/profile";
@@ -52,6 +56,7 @@ export class SkinportFetcher extends BaseFetcher {
 
         if (!txList || txList.length === 0) break;
 
+        const before = allTransactions.length;
         for (const tx of txList) {
           if (tx.status !== "complete") continue;
 
@@ -97,6 +102,7 @@ export class SkinportFetcher extends BaseFetcher {
         }
 
         // Pagination
+        if (this.reachedCutoff(allTransactions.slice(before))) break;
         let meta = resp.pagination || (resp.result ? resp.result : null);
         if (meta && page >= meta.pages) break;
         if (txList.length < limit) break;

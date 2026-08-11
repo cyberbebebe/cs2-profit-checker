@@ -6,6 +6,10 @@ export class DMarketFetcher extends BaseFetcher {
     this.p2pHistoryCache = null;
   }
 
+  resetCache() {
+    this.p2pHistoryCache = null;
+  }
+
   async checkSession() {
     try {
       await this.fetchWithAuth("https://api.dmarket.com/account/v1/balance");
@@ -52,6 +56,7 @@ export class DMarketFetcher extends BaseFetcher {
 
       if (!data || !data.objects || data.objects.length === 0) break;
 
+      const before = items.length;
       for (const obj of data.objects) {
         const isSell = obj.type === "sell";
         const price = parseFloat(obj.changes?.[0]?.money?.amount || 0);
@@ -81,6 +86,7 @@ export class DMarketFetcher extends BaseFetcher {
         );
       }
 
+      if (this.reachedCutoff(items.slice(before))) break;
       offset += data.objects.length;
       if (data.objects.length < limit) break;
       await this.sleep(200);
@@ -108,6 +114,7 @@ export class DMarketFetcher extends BaseFetcher {
 
         if (!data || !data.objects || data.objects.length === 0) break;
 
+        const before = items.length;
         for (const obj of data.objects) {
           if (obj.status?.code !== "FundsTransferSuccess") continue;
 
@@ -159,6 +166,7 @@ export class DMarketFetcher extends BaseFetcher {
           }
         }
 
+        if (this.reachedCutoff(items.slice(before))) break;
         offset += limit;
         if (data.objects.length < limit) break;
         await this.sleep(200);
@@ -188,6 +196,9 @@ export class DMarketFetcher extends BaseFetcher {
   }
 
   async getInventory() {
+    // DMarket changed their offers and inventory endpoints; disabling for now.
+    return [];
+    /*
     try {
       const limit = 100;
       const gameId = "a8db"; // CS2 (CS:GO)
@@ -262,5 +273,6 @@ export class DMarketFetcher extends BaseFetcher {
       console.error("[DMarket] Inventory error:", e);
       return [];
     }
+    */
   }
 }

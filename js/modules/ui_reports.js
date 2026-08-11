@@ -34,6 +34,13 @@ export function getFilteredTransactions(state) {
       matches.filter((m) => !!m.buy_tx_id).map((m) => m.buy_tx_id)
     );
 
+    // A purchase the user manually linked to a sale is no longer "unsold"
+    if (window.txOverrides && window.txOverrides.match) {
+      Object.values(window.txOverrides.match).forEach((link) => {
+        if (link && link.buy_tx_id) matchedBuyTxIds.add(link.buy_tx_id);
+      });
+    }
+
     const unmatchedBuys = state.allBuys.filter((b) => {
       if (matchedBuyTxIds.has(b.tx_id)) return false;
       const d = b.created_at;
@@ -58,6 +65,25 @@ export function getFilteredTransactions(state) {
         sell_currency: "USD",
         profit: 0,
       });
+    });
+  }
+
+  // Apply manual sell↔buy matches (user-linked purchases) BEFORE field overrides,
+  // so any subsequent inline price/source/date edits still take precedence.
+  if (window.txOverrides && window.txOverrides.match) {
+    filtered.forEach((m, idx) => {
+      const sellKey = m.sell_tx_id || ("s-" + encodeURIComponent(m.item_name) + "-" + idx);
+      const link = window.txOverrides.match[sellKey];
+      if (link) {
+        m.buy_tx_id = link.buy_tx_id || m.buy_tx_id;
+        m.buy_source = link.buy_source;
+        m.buy_price = link.buy_price;
+        m.buy_currency = link.buy_currency || "USD";
+        m.buy_created_at = link.buy_created_at ? new Date(link.buy_created_at) : null;
+        if (!(m.float_val > 0) && link.float_val) m.float_val = link.float_val;
+        if ((m.pattern === -1 || m.pattern === undefined) && link.pattern !== undefined)
+          m.pattern = link.pattern;
+      }
     });
   }
 
@@ -213,6 +239,21 @@ export function initReports(state) {
           profitPerc = profitUSD / buyPriceUSD;
         }
 
+        // Holding period (Sold − Acquired, in days) and ROI velocity (ROI per day held)
+        let daysHeld = "";
+        let roiPerDay = "";
+        if (displayBuyDate && displaySellDate) {
+          const bT = new Date(displayBuyDate).getTime();
+          const sT = new Date(displaySellDate).getTime();
+          if (!isNaN(bT) && !isNaN(sT) && sT >= bT) {
+            const hd = (sT - bT) / 86400000; // ms per day
+            daysHeld = parseFloat(hd.toFixed(2));
+            if (hd > 0 && buyPriceUSD > 0 && sellPriceUSD > 0) {
+              roiPerDay = profitPerc / hd; // profitPerc is a ratio here (formatted as %)
+            }
+          }
+        }
+
         return {
           Item: m.item_name,
           Float: m.float_val ? m.float_val.toFixed(8) : "-",
@@ -227,6 +268,8 @@ export function initReports(state) {
           "Sell Date": formatDate(displaySellDate),
           "Profit ($)": parseFloat(profitUSD.toFixed(2)),
           "Profit %": profitPerc,
+          "Days Held": daysHeld,
+          "ROI/Day": roiPerDay,
         };
       });
 
@@ -241,15 +284,16 @@ export function initReports(state) {
 
       const range = XLSX.utils.decode_range(ws["!ref"]);
 
-      if (range.e.c < 13) {
-        range.e.c = 13;
+      // Total block sits two columns past the new last data column (N=13) → P=15
+      if (range.e.c < 15) {
+        range.e.c = 15;
         ws["!ref"] = XLSX.utils.encode_range(range);
       }
 
-      const totalHeaderRef = XLSX.utils.encode_cell({ r: 0, c: 13 });
+      const totalHeaderRef = XLSX.utils.encode_cell({ r: 0, c: 15 });
       ws[totalHeaderRef] = { t: "s", v: "TOTAL PROFIT" };
 
-      const totalValueRef = XLSX.utils.encode_cell({ r: 2, c: 13 });
+      const totalValueRef = XLSX.utils.encode_cell({ r: 2, c: 15 });
       const lastRow = ws_data.length + 1; // Header + Data rows
 
       ws[totalValueRef] = {
@@ -273,10 +317,18 @@ export function initReports(state) {
         ws[cellL].f = `IFERROR(K${R}/F${R}, 0)`;
         ws[cellL].v = ws_data[i]["Profit %"];
         ws[cellL].z = "0.00%";
+
+        // Days Held [Col M = 12]
+        const cellM = XLSX.utils.encode_cell({ r: i + 1, c: 12 });
+        if (ws[cellM] && typeof ws[cellM].v === "number") ws[cellM].z = "0.00";
+
+        // ROI/Day [Col N = 13] — ROI % earned per day held
+        const cellN = XLSX.utils.encode_cell({ r: i + 1, c: 13 });
+        if (ws[cellN] && typeof ws[cellN].v === "number") ws[cellN].z = "0.00%";
       }
 
       // AUTO FILTER
-      ws["!autofilter"] = { ref: "A1:L1" };
+      ws["!autofilter"] = { ref: "A1:N1" };
 
       // Widths
       let cols = fitColumns(ws_data);
@@ -285,8 +337,8 @@ export function initReports(state) {
       if (cols[10]) cols[10].wch = Math.max(4, cols[10].wch / 2);
       if (cols[11]) cols[11].wch = Math.max(4, cols[11].wch / 3);
 
-      if (!cols[13]) cols[13] = { wch: 15 };
-      else cols[13].wch = 15;
+      if (!cols[15]) cols[15] = { wch: 15 };
+      else cols[15].wch = 15;
 
       ws["!cols"] = cols;
 

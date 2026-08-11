@@ -15,12 +15,193 @@ let cachedTotalProfit = 0;
 // DOM pool — cached TR elements for instant sort reordering
 let cachedTRs = new Map();
 
+// ---------------------------------------------------------------------------
+// Column filters
+//   • Acquired / Sold: exact market-source match (via the two <select>s).
+//   • Numeric columns: a comparator expression typed into the column input —
+//     ">5", "<10", ">=5", "<=10", "=7", a range "5-20", or a bare number
+//     (treated as ">="). Anything unparseable is ignored (acts as no filter).
+// ---------------------------------------------------------------------------
+
+// Turn a filter expression into a predicate `(value) => boolean`, or null when
+// there's nothing to filter on. Rows whose value is null/undefined pass NaN in
+// and are excluded by every comparator (they have no value to compare).
+function parseNumFilter(raw) {
+  const s = (raw || "").trim();
+  if (!s) return null;
+  let m = s.match(/^(-?\d*\.?\d+)\s*-\s*(-?\d*\.?\d+)$/); // range "N-M"
+  if (m) {
+    const lo = parseFloat(m[1]);
+    const hi = parseFloat(m[2]);
+    const min = Math.min(lo, hi);
+    const max = Math.max(lo, hi);
+    return (v) => Number.isFinite(v) && v >= min && v <= max;
+  }
+  m = s.match(/^(>=|<=|>|<|=)?\s*(-?\d*\.?\d+)$/); // operator + number
+  if (m) {
+    const op = m[1] || ">=";
+    const n = parseFloat(m[2]);
+    switch (op) {
+      case ">": return (v) => Number.isFinite(v) && v > n;
+      case "<": return (v) => Number.isFinite(v) && v < n;
+      case ">=": return (v) => Number.isFinite(v) && v >= n;
+      case "<=": return (v) => Number.isFinite(v) && v <= n;
+      case "=": return (v) => Number.isFinite(v) && v === n;
+    }
+  }
+  return null;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+const filterEl = (id) => document.getElementById(id);
+
+// Apply the item search + all column filters to the (cached) rows.
+function applyRowFilters(rows) {
+  const searchVal = filterEl("table-search")?.value.toLowerCase().trim() || "";
+  const buySrc = filterEl("filter-buy-source")?.value || "";
+  const sellSrc = filterEl("filter-sell-source")?.value || "";
+  const fBuyPrice = parseNumFilter(filterEl("filter-buy-price")?.value);
+  const fSellPrice = parseNumFilter(filterEl("filter-sell-price")?.value);
+  const fProfit = parseNumFilter(filterEl("filter-profit")?.value);
+  const fRoi = parseNumFilter(filterEl("filter-roi")?.value);
+  const fHold = parseNumFilter(filterEl("filter-holddays")?.value);
+  const fRoiDay = parseNumFilter(filterEl("filter-roiday")?.value);
+
+  if (
+    !searchVal && !buySrc && !sellSrc &&
+    !fBuyPrice && !fSellPrice && !fProfit && !fRoi && !fHold && !fRoiDay
+  ) {
+    return rows; // fast path — nothing to filter
+  }
+
+  return rows.filter((r) => {
+    if (searchVal && !r.item.toLowerCase().includes(searchVal)) return false;
+    if (buySrc && r.bSource !== buySrc) return false;
+    if (sellSrc && r.sSource !== sellSrc) return false;
+    if (fBuyPrice && !fBuyPrice(r.bPriceUsd)) return false;
+    if (fSellPrice && !fSellPrice(r.sPriceUsd)) return false;
+    if (fProfit && !fProfit(r.profitUsd)) return false;
+    if (fRoi && !fRoi(r.profitPerc)) return false;
+    if (fHold && !fHold(r.holdDays ?? NaN)) return false;
+    if (fRoiDay && !fRoiDay(r.roiPerDay ?? NaN)) return false;
+    return true;
+  });
+}
+
+// Rebuild the Acquired/Sold dropdowns from the sources present in the data,
+// preserving the current selection when it still exists.
+function populateSourceFilters(rows) {
+  const fill = (sel, values) => {
+    if (!sel) return;
+    const prev = sel.value;
+    const opts = ['<option value="">All markets</option>'].concat(
+      [...values].sort((a, b) => a.localeCompare(b))
+        .map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`),
+    );
+    sel.innerHTML = opts.join("");
+    if (prev && values.has(prev)) sel.value = prev;
+  };
+
+  const buySources = new Set();
+  const sellSources = new Set();
+  for (const r of rows) {
+    if (r.bSource) buySources.add(r.bSource);
+    if (r.sSource) sellSources.add(r.sSource);
+  }
+  fill(filterEl("filter-buy-source"), buySources);
+  fill(filterEl("filter-sell-source"), sellSources);
+}
+
+// Highlight inputs/selects that currently have an active filter.
+function updateFilterActiveStates() {
+  const ids = [
+    "filter-buy-source", "filter-sell-source", "filter-buy-price",
+    "filter-sell-price", "filter-profit", "filter-roi",
+    "filter-holddays", "filter-roiday",
+  ];
+  for (const id of ids) {
+    const el = filterEl(id);
+    if (!el) continue;
+    el.classList.toggle("filter-active", !!el.value.trim());
+  }
+}
+
+// Reset every column filter (leaves the item search box untouched).
+function clearAllFilters() {
+  for (const id of [
+    "filter-buy-source", "filter-sell-source", "filter-buy-price",
+    "filter-sell-price", "filter-profit", "filter-roi",
+    "filter-holddays", "filter-roiday",
+  ]) {
+    const el = filterEl(id);
+    if (el) el.value = "";
+  }
+  updateFilterActiveStates();
+}
+
+// Sticky filter row: pin it directly under the (variable-height) header row.
+function positionFilterRow() {
+  const table = document.getElementById("transactions-table");
+  const headRow = table?.querySelector("thead tr:first-child");
+  const filterRow = table?.querySelector("thead tr.filter-row");
+  if (!headRow || !filterRow) return;
+  const top = headRow.offsetHeight + "px";
+  filterRow.querySelectorAll("td").forEach((td) => (td.style.top = top));
+}
+
 export function initTable(state) {
   document.getElementById("report-start-month")?.addEventListener("change", () => { cachedRowsData = null; cachedTRs.clear(); renderTable(state); });
   document.getElementById("report-end-month")?.addEventListener("change", () => { cachedRowsData = null; cachedTRs.clear(); renderTable(state); });
-  document.getElementById("include-buys-checkbox")?.addEventListener("change", () => { cachedRowsData = null; cachedTRs.clear(); renderTable(state); });
+  document.getElementById("include-buys-checkbox")?.addEventListener("change", () => {
+    try {
+      chrome.storage.local.set({ showUnsold: document.getElementById("include-buys-checkbox")?.checked === true });
+    } catch (e) {}
+    cachedRowsData = null;
+    cachedTRs.clear();
+    renderTable(state);
+  });
+  document.getElementById("show-days-held-checkbox")?.addEventListener("change", () => { updateColumnVisibility(); });
+  document.getElementById("show-roi-day-checkbox")?.addEventListener("change", () => { updateColumnVisibility(); });
   document.getElementById("table-search")?.addEventListener("click", (ev) => ev.stopPropagation());
   document.getElementById("table-search")?.addEventListener("input", () => { cachedTRs.clear(); renderTable(state, true); });
+
+  // Column filters (Acquired/Sold market + numeric comparators). All re-render
+  // from the cached rows (no currency recompute), reset to page 1, and keep the
+  // scroll position. Clicks are stopped so they don't reach the sort handler.
+  const onFilterChange = () => {
+    updateFilterActiveStates();
+    currentPage = 1;
+    cachedTRs.clear();
+    renderTable(state, true);
+  };
+  const numericFilterIds = [
+    "filter-buy-price", "filter-sell-price", "filter-profit",
+    "filter-roi", "filter-holddays", "filter-roiday",
+  ];
+  for (const id of numericFilterIds) {
+    const el = document.getElementById(id);
+    el?.addEventListener("input", onFilterChange);
+    el?.addEventListener("click", (ev) => ev.stopPropagation());
+  }
+  for (const id of ["filter-buy-source", "filter-sell-source"]) {
+    const el = document.getElementById(id);
+    el?.addEventListener("change", onFilterChange);
+    el?.addEventListener("click", (ev) => ev.stopPropagation());
+  }
+  document.getElementById("btn-clear-filters")?.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    clearAllFilters();
+    currentPage = 1;
+    cachedTRs.clear();
+    renderTable(state, true);
+  });
+  window.addEventListener("resize", positionFilterRow);
+  requestAnimationFrame(positionFilterRow);
 
   // GPU: disable hover/transition during scroll
   const scrollContainer = document.querySelector('.table-scroll-container');
@@ -67,11 +248,36 @@ export function initTable(state) {
      renderTable(state);
   });
 
+  // Manual match modal wiring
+  const mmModal = document.getElementById("manual-match-modal");
+  document.getElementById("mm-close")?.addEventListener("click", closeManualMatch);
+  mmModal?.addEventListener("click", (e) => { if (e.target === mmModal) closeManualMatch(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeManualMatch(); });
+  document.getElementById("mm-clear")?.addEventListener("click", () => {
+    const sellKey = mmModal?.dataset.sellkey;
+    if (sellKey && window.txOverrides?.match) {
+      delete window.txOverrides.match[sellKey];
+      try { chrome.storage.local.set({ txOverrides: window.txOverrides }); } catch (e) {}
+    }
+    closeManualMatch();
+    cachedRowsData = null;
+    cachedTRs.clear();
+    renderTable(state);
+  });
+
   // Event Delegation — unified click-to-edit + profit updates
   const tbody = document.getElementById("table-body");
   const profitBadge = document.getElementById("ui-total-profit");
   if (tbody) {
     tbody.addEventListener("click", (e) => {
+      // Manual match trigger (link a purchase to this sale)
+      const linkBtn = e.target.closest(".btn-link-buy");
+      if (linkBtn) {
+        e.stopPropagation();
+        openManualMatch(linkBtn.dataset.sellkey, decodeURIComponent(linkBtn.dataset.item || ""), state);
+        return;
+      }
+
       const container = e.target.closest(".editable-price, .editable-source, .editable-date");
       if (!container || container.querySelector("input")) return;
 
@@ -194,6 +400,22 @@ export function initTable(state) {
             if (rowObj) {
               if (type === "buy") rowObj.bDate = window.txOverrides[type][key]?.date || null;
               else rowObj.sDate = window.txOverrides[type][key]?.date || null;
+
+              // Days Held & ROI/Day both depend on dates — recompute and refresh cells
+              const { holdDays, roiPerDay } = calcHold(rowObj.bDate, rowObj.sDate, rowObj.bPriceUsd, rowObj.sPriceUsd, rowObj.profitPerc);
+              rowObj.holdDays = holdDays;
+              rowObj.roiPerDay = roiPerDay;
+              const tr = container.closest("tr");
+              if (tr) {
+                const holdCell = tr.querySelector(".td-holddays");
+                if (holdCell) holdCell.textContent = fmtHold(holdDays);
+                const roiDayCell = tr.querySelector(".td-roiday");
+                if (roiDayCell) {
+                  roiDayCell.textContent = fmtRoiDay(roiPerDay);
+                  roiDayCell.className = "num-col td-roiday " + roiDayCls(roiPerDay);
+                }
+              }
+
               updateStatsBar(cachedRowsData);
             }
           }
@@ -254,6 +476,17 @@ function updateRowProfit(tr, profitBadge) {
         rowObj.sPriceUsd = sVal;
         rowObj.profitUsd = pUSD;
         rowObj.profitPerc = pPerc;
+
+        // ROI/Day depends on profit % — recompute and refresh its cell
+        const { holdDays, roiPerDay } = calcHold(rowObj.bDate, rowObj.sDate, bVal, sVal, pPerc);
+        rowObj.holdDays = holdDays;
+        rowObj.roiPerDay = roiPerDay;
+        const roiDayCell = tr.querySelector(".td-roiday");
+        if (roiDayCell) {
+          roiDayCell.textContent = fmtRoiDay(roiPerDay);
+          roiDayCell.className = "num-col td-roiday " + roiDayCls(roiPerDay);
+        }
+
         updateStatsBar(cachedRowsData);
       }
     }
@@ -320,8 +553,9 @@ function updateStatsBar(rowsData) {
   const statRealized = document.getElementById("stat-realized-deals");
 
   statsBar.style.display = "flex";
-  statDeals.textContent = rowsData.length;
-  if (statRealized) statRealized.textContent = realizedDeals + " matched";
+  const totalDeals = rowsData.length + realizedDeals;
+  statDeals.textContent = totalDeals;
+  if (statRealized) statRealized.textContent = realizedDeals + " pairs";
   
   if (realizedDeals > 0) {
     statBest.textContent = (maxProfit >= 0 ? "+$" : "-$") + Math.abs(maxProfit).toFixed(2);
@@ -424,11 +658,139 @@ function fmtD(d) {
   if (!d) return "—";
   const o = new Date(d);
   if (isNaN(o.getTime())) return "—";
-  return o.getFullYear() + "-" + 
-         String(o.getMonth()+1).padStart(2,'0') + "-" + 
-         String(o.getDate()).padStart(2,'0') + ", " + 
-         String(o.getHours()).padStart(2,'0') + ":" + 
+  return o.getFullYear() + "-" +
+         String(o.getMonth()+1).padStart(2,'0') + "-" +
+         String(o.getDate()).padStart(2,'0') + ", " +
+         String(o.getHours()).padStart(2,'0') + ":" +
          String(o.getMinutes()).padStart(2,'0');
+}
+
+// Derived metrics: holding period (Sold − Acquired, in days) and ROI velocity (ROI % per day held)
+function calcHold(bDate, sDate, bPriceUsd, sPriceUsd, profitPerc) {
+  let holdDays = null;
+  if (bDate && sDate) {
+    const bT = new Date(bDate).getTime();
+    const sT = new Date(sDate).getTime();
+    if (!isNaN(bT) && !isNaN(sT) && sT >= bT) {
+      holdDays = (sT - bT) / 86400000; // ms per day
+    }
+  }
+  let roiPerDay = null;
+  // Only meaningful for matched deals (both prices) with a positive holding time
+  if (holdDays !== null && holdDays > 0 && bPriceUsd > 0 && sPriceUsd > 0) {
+    roiPerDay = profitPerc / holdDays;
+  }
+  return { holdDays, roiPerDay };
+}
+
+// Display: holding period in days
+function fmtHold(h) {
+  if (h === null || h === undefined) return "—";
+  if (h >= 10) return Math.round(h).toString();
+  if (h >= 1) return h.toFixed(1);
+  return h.toFixed(2); // sub-day flips
+}
+
+// Display: ROI per day
+function fmtRoiDay(r) {
+  return (r === null || r === undefined) ? "—" : r.toFixed(2) + "%";
+}
+
+// Color class for ROI/Day cell
+function roiDayCls(r) {
+  if (r === null || r === undefined) return "zero-profit";
+  return r > 0 ? "pos-profit" : (r < 0 ? "neg-profit" : "zero-profit");
+}
+
+// ---- Manual match modal ----
+function closeManualMatch() {
+  const modal = document.getElementById("manual-match-modal");
+  if (modal) modal.classList.remove("open");
+}
+
+// Open the picker to link a specific purchase to the sale identified by sellKey.
+function openManualMatch(sellKey, itemName, state) {
+  const modal = document.getElementById("manual-match-modal");
+  if (!modal || !sellKey) return;
+
+  const listEl = document.getElementById("mm-list");
+  const titleEl = document.getElementById("mm-item-name");
+  const showAllChk = document.getElementById("mm-show-all");
+  const clearBtn = document.getElementById("mm-clear");
+
+  if (titleEl) titleEl.textContent = itemName || "(unknown item)";
+  if (showAllChk) showAllChk.checked = false;
+  modal.dataset.sellkey = sellKey;
+
+  const hasMatch = !!(window.txOverrides &&
+    window.txOverrides.match && window.txOverrides.match[sellKey]);
+  if (clearBtn) clearBtn.style.display = hasMatch ? "" : "none";
+
+  const render = () => {
+    const showAll = showAllChk && showAllChk.checked;
+    let buys = (state.allBuys || []).filter(
+      (b) => showAll || b.item_name === itemName,
+    );
+    buys = buys
+      .slice()
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    const shown = buys.slice(0, 300);
+    listEl._buys = shown;
+
+    if (shown.length === 0) {
+      listEl.innerHTML = `<div class="mm-empty">No purchases found${showAll ? "" : " for this item"}.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = shown
+      .map((b, i) => {
+        const dateStr = b.created_at ? fmtD(b.created_at) : "—";
+        const meta = [];
+        if (b.float_val > 0) meta.push("Float " + parseFloat(b.float_val).toFixed(6));
+        if (b.pattern !== -1 && b.pattern !== undefined && b.pattern !== null)
+          meta.push("Pat " + b.pattern);
+        const price = (parseFloat(b.price) || 0).toFixed(2);
+        return `<div class="mm-row" data-idx="${i}">
+          <div class="mm-row-left">
+            <span class="mm-name">${b.item_name}</span>
+            <span class="mm-sub">${dateStr} · ${b.source || "?"}${meta.length ? " · " + meta.join(" · ") : ""}</span>
+          </div>
+          <div class="mm-price">${price} ${b.currency || "USD"}</div>
+        </div>`;
+      })
+      .join("");
+  };
+
+  if (showAllChk) showAllChk.onchange = render;
+  render();
+
+  listEl.onclick = (e) => {
+    const rowEl = e.target.closest(".mm-row");
+    if (!rowEl) return;
+    const b = (listEl._buys || [])[parseInt(rowEl.dataset.idx)];
+    if (!b) return;
+
+    if (!window.txOverrides.match) window.txOverrides.match = {};
+    window.txOverrides.match[sellKey] = {
+      buy_tx_id: b.tx_id || "",
+      buy_source: b.source || "N/A",
+      buy_price: parseFloat(b.price) || 0,
+      buy_currency: b.currency || "USD",
+      buy_created_at: b.created_at ? new Date(b.created_at).toISOString() : null,
+      float_val: b.float_val || 0,
+      pattern: b.pattern !== undefined ? b.pattern : -1,
+    };
+    try {
+      chrome.storage.local.set({ txOverrides: window.txOverrides });
+    } catch (e) {}
+
+    closeManualMatch();
+    cachedRowsData = null;
+    cachedTRs.clear();
+    renderTable(state);
+  };
+
+  modal.classList.add("open");
 }
 
 // Sort in-place
@@ -443,6 +805,8 @@ function sortRows(rowsData) {
       case "Sell Income ($)": valA = a.sPriceUsd; valB = b.sPriceUsd; break;
       case "Profit ($)": valA = a.profitUsd; valB = b.profitUsd; break;
       case "Profit %": valA = a.profitPerc; valB = b.profitPerc; break;
+      case "Days Held": valA = a.holdDays ?? -Infinity; valB = b.holdDays ?? -Infinity; break;
+      case "ROI/Day": valA = a.roiPerDay ?? -Infinity; valB = b.roiPerDay ?? -Infinity; break;
     }
     if (valA < valB) return sortAsc ? -1 : 1;
     if (valA > valB) return sortAsc ? 1 : -1;
@@ -475,11 +839,18 @@ function buildRowHtml(row) {
   const buyRawDateStr = row.bDate ? new Date(row.bDate).toISOString() : "";
   const sellRawDateStr = row.sDate ? new Date(row.sDate).toISOString() : "";
 
+  // Manual match: only meaningful for rows that have a sale (not "Unsold" buys)
+  const showLink = row.sSource !== "Unsold";
+  const isLinked = !!(window.txOverrides && window.txOverrides.match && window.txOverrides.match[row.sellKey]);
+  const linkBtnHtml = showLink
+    ? `<span class="btn-link-buy ${isLinked ? "linked" : ""}" title="Manually match a purchase to this sale" data-sellkey="${row.sellKey}" data-item="${encodeURIComponent(row.item)}">🔗</span>`
+    : "";
+
   return `<tr>
     <td><div class="item-main"><span class="item-name">${row.item}${specialBadge}</span><span class="item-meta">${metaStr}</span></div></td>
     <td><div class="item-main table-input-buy" data-key="${row.buyKey}">
         <span class="editable-date text-muted" data-raw="${buyRawDateStr}" title="Click to edit">${bDateDisplay}</span>
-        <span class="item-meta editable-source" title="Click to edit">${row.bSource}</span>
+        <span class="buy-src-line"><span class="item-meta editable-source" title="Click to edit">${row.bSource}</span>${linkBtnHtml}</span>
     </div></td>
     <td class="num-col"><span class="editable-price table-input-buy" data-key="${row.buyKey}"><span class="price-sign">$</span><span class="price-val">${row.bPriceUsd.toFixed(2)}</span></span></td>
     <td><div class="item-main table-input-sell" data-key="${row.sellKey}">
@@ -489,6 +860,8 @@ function buildRowHtml(row) {
     <td class="num-col"><span class="editable-price table-input-sell" data-key="${row.sellKey}"><span class="price-sign">$</span><span class="price-val">${row.sPriceUsd.toFixed(2)}</span></span></td>
     <td class="num-col td-profit ${profitClass}">$${row.profitUsd.toFixed(2)}</td>
     <td class="num-col td-profit ${roiClass}">${row.profitPerc.toFixed(2)}%</td>
+    <td class="num-col td-holddays">${fmtHold(row.holdDays)}</td>
+    <td class="num-col td-roiday ${roiDayCls(row.roiPerDay)}">${fmtRoiDay(row.roiPerDay)}</td>
   </tr>`;
 }
 
@@ -561,10 +934,9 @@ export async function renderTable(state, preserveScroll = false) {
   const tbody = document.getElementById("table-body");
   const profitBadge = document.getElementById("ui-total-profit");
 
-  // FAST PATH: cached data (sort/page change only)
+  // FAST PATH: cached data (sort/page/filter change only)
   if (cachedRowsData) {
-    const searchVal = document.getElementById("table-search")?.value.toLowerCase().trim() || "";
-    let dataToRender = searchVal ? cachedRowsData.filter(r => r.item.toLowerCase().includes(searchVal)) : cachedRowsData;
+    let dataToRender = applyRowFilters(cachedRowsData);
 
     cachedTotalProfit = 0;
     for (const row of dataToRender) cachedTotalProfit += row.profitUsd;
@@ -579,19 +951,22 @@ export async function renderTable(state, preserveScroll = false) {
 
     profitBadge.textContent = (cachedTotalProfit >= 0 ? "+$" : "-$") + Math.abs(cachedTotalProfit).toFixed(2);
     profitBadge.className = "profit-badge " + (cachedTotalProfit >= 0 ? "pos" : "neg");
-    
+
     updateStatsBar(dataToRender);
+    updateColumnVisibility();
+    positionFilterRow();
     return;
   }
 
   // FULL PATH: filter + currency conversion (only on fetch/filter change)
   const filterData = getFilteredTransactions(state);
   if (!filterData || filterData.filtered.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">No synced data for this period. Click Sync Data to begin.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="9">No synced data for this period. Click Sync Data to begin.</td></tr>`;
     profitBadge.textContent = "$0.00";
     profitBadge.className = "profit-badge";
     const statsBar = document.getElementById("stats-bar");
     if (statsBar) statsBar.style.display = "none";
+    positionFilterRow();
     return;
   }
 
@@ -631,6 +1006,8 @@ export async function renderTable(state, preserveScroll = false) {
        profitPerc = (profitUSD / buyPriceUSD) * 100;
     }
 
+    const { holdDays, roiPerDay } = calcHold(buyDateStr, sellDateStr, buyPriceUSD, sellPriceUSD, profitPerc);
+
     return {
       raw: m,
       item: m.item_name,
@@ -642,6 +1019,8 @@ export async function renderTable(state, preserveScroll = false) {
       sPriceUsd: sellPriceUSD,
       profitUsd: profitUSD,
       profitPerc: profitPerc,
+      holdDays: holdDays,
+      roiPerDay: roiPerDay,
       bSource: bSourceStr,
       sSource: sSourceStr,
       buyKey: buyKey,
@@ -651,8 +1030,9 @@ export async function renderTable(state, preserveScroll = false) {
   });
 
   cachedRowsData = rowsData;
-  const searchVal = document.getElementById("table-search")?.value.toLowerCase().trim() || "";
-  let dataToRender = searchVal ? cachedRowsData.filter(r => r.item.toLowerCase().includes(searchVal)) : cachedRowsData;
+  populateSourceFilters(cachedRowsData);
+  updateFilterActiveStates();
+  let dataToRender = applyRowFilters(cachedRowsData);
 
   cachedTotalProfit = 0;
   for (const row of dataToRender) cachedTotalProfit += row.profitUsd;
@@ -667,6 +1047,34 @@ export async function renderTable(state, preserveScroll = false) {
 
   profitBadge.textContent = (cachedTotalProfit >= 0 ? "+$" : "-$") + Math.abs(cachedTotalProfit).toFixed(2);
   profitBadge.className = "profit-badge " + (cachedTotalProfit >= 0 ? "pos" : "neg");
-  
+
   updateStatsBar(dataToRender);
+  updateColumnVisibility();
+  positionFilterRow();
+}
+
+export function updateColumnVisibility() {
+  const showDaysHeld = document.getElementById("show-days-held-checkbox")?.checked !== false;
+  const showRoiDay = document.getElementById("show-roi-day-checkbox")?.checked !== false;
+
+  try {
+    chrome.storage.local.set({
+      showDaysHeld: showDaysHeld,
+      showRoiDay: showRoiDay
+    });
+  } catch (e) {}
+
+  const thHold = document.querySelector(".th-holddays");
+  const thRoi = document.querySelector(".th-roiday");
+  if (thHold) thHold.style.display = showDaysHeld ? "" : "none";
+  if (thRoi) thRoi.style.display = showRoiDay ? "" : "none";
+
+  const tdHolds = document.querySelectorAll(".td-holddays");
+  const tdRois = document.querySelectorAll(".td-roiday");
+  tdHolds.forEach(td => td.style.display = showDaysHeld ? "" : "none");
+  tdRois.forEach(td => td.style.display = showRoiDay ? "" : "none");
+
+  // Keep the matching filter cells in sync with their columns.
+  document.querySelectorAll(".filt-holddays").forEach(td => td.style.display = showDaysHeld ? "" : "none");
+  document.querySelectorAll(".filt-roiday").forEach(td => td.style.display = showRoiDay ? "" : "none");
 }
