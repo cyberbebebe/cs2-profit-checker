@@ -37,7 +37,7 @@ export class CSMoneyFetcher extends BaseFetcher {
 
   async getBalance() {
     try {
-      const resp = await fetch("https://cs.money/market/sell/", {
+      const resp = await fetch("https://cs.money/market/buy/", {
         method: "GET",
       });
       const text = await resp.text();

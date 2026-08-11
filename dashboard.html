@@ -178,7 +178,8 @@
           </label>
         </div>
         <div class="control-box toggle-row">
-          <label for="recheck-recent-checkbox" class="modern-checkbox-wrap" title="On the next sync, re-fetch the last 8 days of history for every selected market so reversed/cancelled trade offers are picked up (removed rows drop, status/price updates apply).">
+          <label for="recheck-recent-checkbox" class="modern-checkbox-wrap"
+            title="On the next sync, re-fetch the last 8 days of history for every selected market so reversed/cancelled trade offers are picked up (removed rows drop, status/price updates apply).">
             <input type="checkbox" id="recheck-recent-checkbox" />
             <div class="checkbox-visual"></div>
             <span class="checkbox-label">Re-check last 8 days (catch reversals)</span>
@@ -186,7 +187,9 @@
         </div>
 
         <button id="btn-fetch-all" class="btn-primary full-width action-btn">⚡ Sync Market Data</button>
-        <button id="btn-full-resync" class="btn-ghost full-width" style="margin-top: 10px;" title="Ignore the local cache and re-download the complete transaction history for every selected market. Use this for a fresh market or to recover after errors.">🧹 Full Resync (all history)</button>
+        <button id="btn-full-resync" class="btn-ghost full-width" style="margin-top: 10px;"
+          title="Ignore the local cache and re-download the complete transaction history for every selected market. Use this for a fresh market or to recover after errors.">🧹
+          Full Resync (all history)</button>
 
         <div class="progress-wrap sidebar-progress">
           <div class="progress-bar-glass">
@@ -311,35 +314,44 @@
               </tr>
               <tr class="filter-row">
                 <td>
-                  <button id="btn-clear-filters" class="filter-clear-btn" title="Reset all column filters">✕ Clear filters</button>
+                  <button id="btn-clear-filters" class="filter-clear-btn" title="Reset all column filters">✕ Clear
+                    filters</button>
                 </td>
                 <td>
-                  <select id="filter-buy-source" class="glass-input filter-input" title="Show only items acquired on this market">
+                  <select id="filter-buy-source" class="glass-input filter-input"
+                    title="Show only items acquired on this market">
                     <option value="">All markets</option>
                   </select>
                 </td>
                 <td class="num-col">
-                  <input type="text" id="filter-buy-price" class="glass-input filter-input" placeholder="e.g. &gt;5" title="Filter by buy price. Examples: >5 · <10 · 5-20" />
+                  <input type="text" id="filter-buy-price" class="glass-input filter-input" placeholder="e.g. &gt;5"
+                    title="Filter by buy price. Examples: >5 · <10 · 5-20" />
                 </td>
                 <td>
-                  <select id="filter-sell-source" class="glass-input filter-input" title="Show only items sold on this market">
+                  <select id="filter-sell-source" class="glass-input filter-input"
+                    title="Show only items sold on this market">
                     <option value="">All markets</option>
                   </select>
                 </td>
                 <td class="num-col">
-                  <input type="text" id="filter-sell-price" class="glass-input filter-input" placeholder="e.g. &gt;5" title="Filter by sell income. Examples: >5 · <10 · 5-20" />
+                  <input type="text" id="filter-sell-price" class="glass-input filter-input" placeholder="e.g. &gt;5"
+                    title="Filter by sell income. Examples: >5 · <10 · 5-20" />
                 </td>
                 <td class="num-col">
-                  <input type="text" id="filter-profit" class="glass-input filter-input" placeholder="e.g. &gt;0" title="Filter by profit ($). Examples: >0 · <-2 · 1-50" />
+                  <input type="text" id="filter-profit" class="glass-input filter-input" placeholder="e.g. &gt;0"
+                    title="Filter by profit ($). Examples: >0 · <-2 · 1-50" />
                 </td>
                 <td class="num-col">
-                  <input type="text" id="filter-roi" class="glass-input filter-input" placeholder="e.g. &gt;10" title="Filter by ROI %. Examples: >10 · <0 · 5-100" />
+                  <input type="text" id="filter-roi" class="glass-input filter-input" placeholder="e.g. &gt;10"
+                    title="Filter by ROI %. Examples: >10 · <0 · 5-100" />
                 </td>
                 <td class="num-col filt-holddays">
-                  <input type="text" id="filter-holddays" class="glass-input filter-input" placeholder="e.g. &gt;7" title="Filter by days held. Examples: >7 · <30 · 1-14" />
+                  <input type="text" id="filter-holddays" class="glass-input filter-input" placeholder="e.g. &gt;7"
+                    title="Filter by days held. Examples: >7 · <30 · 1-14" />
                 </td>
                 <td class="num-col filt-roiday">
-                  <input type="text" id="filter-roiday" class="glass-input filter-input" placeholder="e.g. &gt;1" title="Filter by ROI/Day. Examples: >1 · <0 · 0.5-5" />
+                  <input type="text" id="filter-roiday" class="glass-input filter-input" placeholder="e.g. &gt;1"
+                    title="Filter by ROI/Day. Examples: >1 · <0 · 0.5-5" />
                 </td>
               </tr>
             </thead>

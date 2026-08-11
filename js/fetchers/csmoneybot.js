@@ -24,11 +24,11 @@ function extractPhase(name) {
 export class CSMoneyBotFetcher extends BaseFetcher {
   constructor() {
     super("CSMoneyBot");
-    this.cachedHistory = null;
+    this._historyPromise = null;
   }
 
   resetCache() {
-    this.cachedHistory = null;
+    this._historyPromise = null;
   }
 
   async checkSession() {
@@ -50,7 +50,7 @@ export class CSMoneyBotFetcher extends BaseFetcher {
       const text = await resp.text();
 
       // Look for the userInfo block and extract the balance
-      const balanceMatch = text.match(/"userInfo"[\s\S]*?"balance"\s*:\s*([\d.]+)/);
+      const balanceMatch = text.match(/"userInfo"[\s\S]*?"tradeBalance"\s*:\s*([\d.]+)/);
       const balance = balanceMatch ? parseFloat(balanceMatch[1]) : 0;
 
       return { amount: balance, currency: "USD" };
@@ -60,44 +60,34 @@ export class CSMoneyBotFetcher extends BaseFetcher {
     }
   }
 
-  async getSales() {
-    const history = await this.loadHistoryIfNeeded();
-    return history.filter((tx) => tx.type === "SELL");
-  }
-
-  async getBuys() {
-    const history = await this.loadHistoryIfNeeded();
-    return history.filter((tx) => tx.type === "BUY");
-  }
-
-  async loadHistoryIfNeeded() {
-    if (this.cachedHistory) return this.cachedHistory;
-
-    let allTxs = [];
-    let offset = 0;
-    let limit = 60;
+  async fetchHistory() {
+    const history = [];
+    let cursor = null;
+    const limit = 1000;
 
     while (true) {
-      const url = `https://cs.money/2.0/get_transactions?limit=${limit}&offset=${offset}&type=0&status=1&appId=730`;
+      let url = `https://cs.money/api/public/v3/trade/transactions?app_id=730&limit=${limit}&type=trade&status=completed`;
+      if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
 
       try {
         const data = await this.fetchWithAuth(url);
 
-        if (!Array.isArray(data)) {
-          if (data.error) throw new Error(data.error);
+        if (!data || !Array.isArray(data.items)) {
+          console.warn("[CSMoneyBot] Unexpected response structure:", data);
           break;
         }
 
-        if (data.length === 0) break;
+        if (data.items.length === 0) break;
 
-        const before = allTxs.length;
-        for (const raw of data) {
-          allTxs.push(...this.convertCSMoneyBotTx(raw));
+        const before = history.length;
+        for (const raw of data.items) {
+          history.push(...this.convertCSMoneyBotTx(raw));
         }
 
-        if (this.reachedCutoff(allTxs.slice(before))) break;
-        if (data.length < limit) break;
-        offset += limit;
+        if (this.reachedCutoff(history.slice(before))) break;
+        
+        if (!data.cursor) break;
+        cursor = data.cursor;
 
         await this.sleep(1500);
       } catch (e) {
@@ -106,55 +96,77 @@ export class CSMoneyBotFetcher extends BaseFetcher {
       }
     }
 
-    this.cachedHistory = allTxs;
-    return allTxs;
+    return history;
+  }
+
+  async getHistory() {
+    if (this._historyPromise) {
+      return this._historyPromise;
+    }
+
+    this._historyPromise = this.fetchHistory();
+    try {
+      const res = await this._historyPromise;
+      setTimeout(() => {
+        this._historyPromise = null;
+      }, 5000);
+      return res;
+    } catch (e) {
+      this._historyPromise = null;
+      throw e;
+    }
+  }
+
+  async getSales() {
+    const all = await this.getHistory();
+    return all.filter((tx) => tx.type === "SELL");
+  }
+
+  async getBuys() {
+    const all = await this.getHistory();
+    return all.filter((tx) => tx.type === "BUY");
   }
 
   convertCSMoneyBotTx(raw) {
     const transactions = [];
 
-    // timestamp is in ms
-    let createdDate = new Date(raw.timestamp);
+    if (raw.type !== "trade" || raw.status !== "completed") return [];
+    if (!Array.isArray(raw.offer_skins)) return [];
 
-    // Bot items -> User bought them (BUY)
-    const botItems = raw.items && raw.items.bot ? raw.items.bot : [];
-    for (const item of botItems) {
-      transactions.push(this.createTransactionItem(item, "BUY", raw.id, createdDate));
-    }
+    let createdDate = new Date(raw.time);
 
-    // User items -> User sold them (SELL)
-    const userItems = raw.items && raw.items.user ? raw.items.user : [];
-    for (const item of userItems) {
-      transactions.push(this.createTransactionItem(item, "SELL", raw.id, createdDate));
+    for (const skin of raw.offer_skins) {
+      const isBuy = skin.type === "bot";
+      const isSell = skin.type === "partner";
+      
+      if (isBuy) {
+        transactions.push(this.createTransactionItem(skin, "BUY", raw.transaction_id, createdDate));
+      } else if (isSell) {
+        transactions.push(this.createTransactionItem(skin, "SELL", raw.transaction_id, createdDate));
+      }
     }
 
     return transactions;
   }
 
   createTransactionItem(item, type, rawId, createdDate) {
-    const meta = item.meta || {};
-    const { name: cleanName, phase } = extractPhase(meta.fullName || item.name || "");
+    const { name: cleanName, phase } = extractPhase(item.name || "");
 
-    let finalPattern = -1;
-    if (meta.pattern !== undefined && meta.pattern !== null) {
-      finalPattern = meta.pattern;
-    }
-
-    const floatVal = parseFloat(item.float || meta.float || 0);
+    const floatVal = item.float_value !== undefined ? parseFloat(item.float_value) : 0;
     const price = parseFloat(item.price || 0);
 
     return new Transaction({
       source: "CSMoneyBot",
       type: type,
-      tx_id: String(rawId) + "-" + String(item.id),
-      asset_id: String(item.assetId || item.id),
+      tx_id: String(rawId) + "-" + String(item.asset_id || item.id || Date.now()),
+      asset_id: String(item.asset_id || ""),
       item_name: cleanName,
       price: price,
       currency: "USD",
       created_at: createdDate,
       verified_at: createdDate,
       float_val: floatVal,
-      pattern: finalPattern,
+      pattern: -1,
       phase: phase,
     });
   }

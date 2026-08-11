@@ -55,7 +55,7 @@ export function matchTransactions(sales, buys) {
 
   buys.forEach((b) => {
     if (b.float_val > 0) {
-      const floatSig = `${b.item_name}|${parseFloat(b.float_val).toFixed(12)}`;
+      const floatSig = `${b.item_name}|${parseFloat(b.float_val).toFixed(8)}`;
       if (!buyFloatMap[floatSig]) buyFloatMap[floatSig] = [];
       buyFloatMap[floatSig].push(b);
       if (!buyFloatByName[b.item_name]) buyFloatByName[b.item_name] = [];
@@ -120,7 +120,7 @@ export function matchTransactions(sales, buys) {
 
     // A: Unique float matching (exact fingerprint)
     if (sale.float_val > 0) {
-      const floatSig = `${sale.item_name}|${parseFloat(sale.float_val).toFixed(12)}`;
+      const floatSig = `${sale.item_name}|${parseFloat(sale.float_val).toFixed(8)}`;
       match = findFirst(buyFloatMap[floatSig], saleTime, false);
       if (match) matchType = "float";
     }
@@ -132,31 +132,35 @@ export function matchTransactions(sales, buys) {
     }
 
     // C: Name-based matching against float-less purchases, with the per-pair
-    // trade-hold: sale_date >= tradeHoldUnlockTime(buy_date). This covers both
-    // no-float items (cases, agents…) and float-bearing sales whose buy came
-    // from a marketplace that doesn't report float (e.g. a CSFloat glove sale
-    // matched to its SkinPlace/SkinSwap purchase). Float buys and no-float buys
-    // are disjoint pools, so this never competes with the exact float match in
-    // pass A.
+    // trade-hold: sale_date >= tradeHoldUnlockTime(buy_date).
+    // DISABLED per user request for now
+    /*
     if (!match) {
       match = findFirst(buyNameMap[sale.item_name], saleTime, true);
       if (match) matchType = "name";
     }
+    */
 
     if (match) {
       used.add(match);
       decided.push({ sale, match, matchType });
-    } else if (!(sale.float_val > 0) && FLOATLESS_SOURCES.has(sale.source)) {
-      // Defer to pass 2 so exact float matches claim their purchases first.
-      fallbackQueue.push(sale);
     } else {
+      /*
+      if (!(sale.float_val > 0) && FLOATLESS_SOURCES.has(sale.source)) {
+        // Defer to pass 2 so exact float matches claim their purchases first.
+        fallbackQueue.push(sale);
+      } else {
+        decided.push({ sale, match: null, matchType: "none" });
+      }
+      */
       decided.push({ sale, match: null, matchType: "none" });
     }
   }
 
   // 4. Float-fallback for float-less skin markets (Aim/Avan): match a no-float
-  //    skin sale to a float-bearing purchase of the same name. Obvious when a
-  //    single candidate remains; otherwise the closest (latest eligible) buy.
+  //    skin sale to a float-bearing purchase of the same name.
+  // DISABLED per user request for now
+  /*
   for (const sale of fallbackQueue) {
     const saleTime = getTxDate(sale).getTime();
     const candidates = buyFloatByName[sale.item_name] || [];
@@ -176,6 +180,7 @@ export function matchTransactions(sales, buys) {
       decided.push({ sale, match: null, matchType: "none" });
     }
   }
+  */
 
   // 5. Build results (order is irrelevant downstream — the table re-sorts).
   return decided.map(({ sale, match, matchType }) => {
@@ -233,7 +238,7 @@ export function matchInventory(inventoryItems, allBuys) {
 
   allBuys.forEach((b) => {
     if (b.float_val > 0) {
-      const floatSig = `${b.item_name}-${parseFloat(b.float_val).toFixed(12)}`;
+      const floatSig = `${b.item_name}-${parseFloat(b.float_val).toFixed(8)}`;
       if (!buyFloatMap[floatSig]) buyFloatMap[floatSig] = [];
       buyFloatMap[floatSig].push(b);
     } else {
@@ -265,18 +270,21 @@ export function matchInventory(inventoryItems, allBuys) {
 
     // B: Float-based matching (if float > 0)
     if (!match && item.float_val > 0) {
-      const floatSig = `${item.item_name}-${parseFloat(item.float_val).toFixed(12)}`;
+      const floatSig = `${item.item_name}-${parseFloat(item.float_val).toFixed(8)}`;
       if (buyFloatMap[floatSig]) {
         match = buyFloatMap[floatSig][0];
       }
     }
 
     // C: Name-based matching (if float === 0)
+    // DISABLED per user request for now
+    /*
     if (!match && (!item.float_val || item.float_val === 0)) {
       if (buyNameMap[item.item_name]) {
         match = buyNameMap[item.item_name][0];
       }
     }
+    */
 
     return {
       item_name: item.item_name,
