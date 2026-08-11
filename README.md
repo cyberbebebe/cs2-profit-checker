@@ -1,6 +1,6 @@
 # CS2 Profit Checker <br> Automated CS2 Trading Profit & Accounting
 
-## Supported marketplaces: **Buff163, Youpin, C5Game, CSFloat, DMarket, CSMoney, BuffMarket, Skinport, Skins, SkinSwap, SkinPlace, AvanMarket, AimMarket**
+## Supported marketplaces: **Buff163, Youpin, C5Game, CSFloat, DMarket, CSMoney, BuffMarket, Skinport, Skins, SkinSwap, SkinPlace, Avan, Aim**
 
 ## 🔍 Features & What It Does
 
